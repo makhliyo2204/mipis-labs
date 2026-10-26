@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ЛР 1. Псевдослучайные числа</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Симулятор ЛР 1 по МИПиС: генератор NumPy, метод обратной функции, гистограмма и критерий Колмогорова–Смирнова с теми же числами, что в Python.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: шапка с переключателем ЛР, пульт с вариантом слева, сцена справа, ниже таблица отчёта, диаграмма и код. Палитра общая с симулятором СМО */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --surface2:#f5f7f9; --ink:#17202b; --muted:#5b6876; --line:#d5dce3;
+  --accent:#1f5f8b; --accent-soft:#dbe8f2;
+  --wait:#c97f00; --ok:#2e7d4f; --bad:#c2412d; --ok-soft:#e1f1e7; --wait-soft:#fbefd5; --bad-soft:#f8e1dc;
+  --code-bg:#f5f7f9; --btn-ink:#ffffff;
+  --f-display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161c; --surface:#18202a; --surface2:#1e2833; --ink:#e6ecf2; --muted:#93a1b0; --line:#2c3845;
+  --accent:#6aa9d6; --accent-soft:#1d3346;
+  --wait:#e5a634; --ok:#5cbf85; --bad:#ef7a64; --ok-soft:#173025; --wait-soft:#3a2c12; --bad-soft:#3d1f1a;
+  --code-bg:#141b23; --btn-ink:#0d1620; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161c; --surface:#18202a; --surface2:#1e2833; --ink:#e6ecf2; --muted:#93a1b0; --line:#2c3845;
+  --accent:#6aa9d6; --accent-soft:#1d3346;
+  --wait:#e5a634; --ok:#5cbf85; --bad:#ef7a64; --ok-soft:#173025; --wait-soft:#3a2c12; --bad-soft:#3d1f1a;
+  --code-bg:#141b23; --btn-ink:#0d1620; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+a{color:var(--accent)}
+.topnav{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:13.5px}
+.topnav .home{color:var(--ink);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.topnav .home:hover{color:var(--accent)}
+.labs{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.labs a{font-family:var(--f-mono);font-size:12.5px;font-weight:600;text-decoration:none;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--surface)}
+.labs a:hover{border-color:var(--accent);color:var(--ink)}
+.labs a[aria-current=page]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+header{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:flex-end;justify-content:space-between}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(22px,3.4vw,32px);line-height:1.15;margin:0;text-wrap:balance}
+.lead{margin:8px 0 0;color:var(--muted);max-width:66ch}
+.board{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tag{font-family:var(--f-mono);font-weight:600;font-size:20px;padding:6px 14px;border-radius:8px;background:var(--ink);color:var(--bg)}
+.pill{font-size:13px;font-weight:600;padding:5px 11px;border-radius:999px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--wait-soft);color:var(--wait)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.main{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;min-width:0}
+.controls{display:flex;flex-direction:column;gap:14px}
+.h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600}
+button{font:inherit;cursor:pointer}
+select,input[type=number]{font:inherit;font-family:var(--f-mono);padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--surface2);color:var(--ink)}
+select{width:100%;font-family:var(--f-body)}
+input[type=number]{width:96px;text-align:right}
+input[aria-invalid=true]{border-color:var(--bad)}
+.field{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.field label{font-size:14px;font-weight:500}
+.field small{display:block;color:var(--muted);font-size:12px;font-weight:400;font-family:var(--f-body)}
+.err{color:var(--bad);font-size:13px;margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.derived{font-size:13px;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px;display:flex;flex-direction:column;gap:3px}
+.derived b{color:var(--ink);font-family:var(--f-mono);font-weight:600}
+.stage{display:flex;flex-direction:column;gap:12px;padding:14px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;border-right:1px solid var(--line);color:var(--ink);padding:7px 12px;font-weight:600;font-family:var(--f-mono)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--btn-ink)}
+.btn{background:var(--accent);color:var(--btn-ink);border:0;border-radius:8px;padding:8px 14px;font-weight:600;text-decoration:none;display:inline-block}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:6px 11px;font-size:13px}
+.speed{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.speed select{width:auto;font-family:var(--f-mono);font-size:13px;padding:5px 6px}
+canvas{width:100%;display:block;border-radius:8px;background:var(--surface2)}
+.counters{display:grid;grid-template-columns:repeat(var(--cols,6),minmax(0,1fr));gap:8px}
+@media (max-width:700px){.counters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.counter{background:var(--surface2);border-radius:8px;padding:8px 10px;min-width:0}
+.counter span{display:block;font-size:11.5px;color:var(--muted);line-height:1.3}
+.counter b{font-family:var(--f-mono);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.counter.w b{color:var(--wait)} .counter.g b{color:var(--ok)} .counter.r b{color:var(--bad)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+h2{font-family:var(--f-display);font-weight:500;font-size:17px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:72ch}
+.headrow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.copybox{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.02em;vertical-align:bottom}
+td{font-family:var(--f-mono)}
+tbody tr.pick{cursor:pointer}
+tbody tr.pick:hover{background:var(--surface2)}
+tbody tr.cur{background:var(--accent-soft)}
+td.over{color:var(--bad)}
+.chartbox{overflow-x:auto}
+@media (max-width:620px){.chartbox svg{min-width:600px}}
+svg text{font-family:var(--f-body)}
+.chart-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.chart-legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:18px;height:0;border-top:2px solid}
+.sw.dash{border-top-style:dashed}
+.sw.bar{height:10px;border:0;width:12px}
+pre{margin:0;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto;font-family:var(--f-mono);font-size:13px;line-height:1.6;color:var(--ink)}
+.c-com{color:var(--muted)} .c-kw{color:var(--accent);font-weight:600} .c-num{color:var(--wait)} .c-str{color:var(--ok)}
+.note{font-size:13.5px;color:var(--muted);margin:10px 0 0;max-width:76ch}
+.toast{font-size:13px;color:var(--ok);min-height:1.2em}
+ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;max-width:80ch}
+footer{color:var(--muted);font-size:12.5px;text-align:center}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+.kstiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.verdict{font-size:14px;font-weight:500;margin:12px 0;padding:10px 12px;border-radius:8px}
+.verdict.ok{background:var(--ok-soft);color:var(--ok)} .verdict.bad{background:var(--bad-soft);color:var(--bad)}
+#console{white-space:pre}
+#cmp td:first-child{white-space:nowrap}
+.formula{font-size:13px;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px;line-height:1.8}
+.formula b{color:var(--ink);font-family:var(--f-mono);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="topnav" aria-label="Лабораторные работы"><a class="home" href="../index.html">← Все лабораторные</a><div class="labs"><a href="../lab1/index.html" title="Псевдослучайные числа" aria-current="page">ЛР 1</a><a href="../lab2/index.html" title="Обслуживание автобусов">ЛР 2</a><a href="../lab3/index.html" title="Система контроля">ЛР 3</a><a href="../lab4/index.html" title="Вычислительный центр">ЛР 4</a></div></nav>
+  <header>
+    <div>
+      <p class="eyebrow">МИПиС · лабораторная работа 1</p>
+      <h1>Псевдослучайные числа с заданным законом распределения</h1>
+      <p class="lead">Равномерные числа U ∈ [0; 1) из генератора NumPy преобразуются в выборку нужного закона. Симулятор считает среднее, дисперсию, строит гистограмму и проверяет согласие критерием Колмогорова–Смирнова. При том же seed первые числа и характеристики совпадают с программой на Python.</p>
+    </div>
+    <div class="board"><span class="tag" id="vtag">Exp(λ = 2)</span><span class="pill ok" id="status">—</span></div>
+  </header>
+
+  <div class="main">
+    <aside class="panel controls" aria-label="Параметры эксперимента">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span class="h3">Закон распределения</span>
+        <div class="seg" id="dist" role="group" aria-label="Закон распределения" style="width:100%">
+          <button data-d="exp" aria-pressed="true" style="flex:1">Exp</button><button data-d="uni" aria-pressed="false" style="flex:1">U(a, b)</button><button data-d="norm" aria-pressed="false" style="flex:1">N(μ, σ)</button>
+        </div>
+        <small class="muted" id="distname" style="font-size:12.5px;color:var(--muted)"></small>
+      </div>
+      <div class="field"><label for="N">Объём выборки N<small>N в программе</small></label><input type="number" id="N" min="10" max="200000" step="1"></div>
+      <div class="field" data-for="exp"><label for="lam">λ<small>lam, интенсивность</small></label><input type="number" id="lam" min="0" step="0.1"></div>
+      <div class="field" data-for="uni" hidden><label for="a">a<small>левая граница</small></label><input type="number" id="a" step="0.5"></div>
+      <div class="field" data-for="uni" hidden><label for="b">b<small>правая граница</small></label><input type="number" id="b" step="0.5"></div>
+      <div class="field" data-for="norm" hidden><label for="mu">μ<small>mu, среднее</small></label><input type="number" id="mu" step="0.5"></div>
+      <div class="field" data-for="norm" hidden><label for="sigma">σ<small>sigma, отклонение</small></label><input type="number" id="sigma" min="0" step="0.1"></div>
+      <div class="field"><label for="seed">seed<small>default_rng(seed)</small></label><input type="number" id="seed" min="0" step="1"></div>
+      <div class="field"><label for="bins">Интервалов<small>bins гистограммы</small></label><input type="number" id="bins" min="5" max="200" step="1"></div>
+      <div class="field"><label for="alpha">α<small>уровень значимости</small></label><input type="number" id="alpha" min="0.001" max="0.5" step="0.01"></div>
+      <p class="err" id="err" role="alert" hidden></p>
+      <button class="btn ghost small" id="reset" type="button">Вернуть пример лабораторной</button>
+      <div class="formula" id="formula"></div>
+    </aside>
+
+    <section class="panel stage" aria-label="Преобразование равномерных чисел">
+      <div class="headrow">
+        <div><h2 id="mapTitle">Метод обратной функции</h2><p class="sub" id="mapSub" style="margin:0"></p></div>
+        <div class="toolbar"><button class="btn ghost small" id="prev" type="button" aria-label="Предыдущее число">←</button><span class="val" id="idx" style="font-family:var(--f-mono);font-size:13px;min-width:62px;text-align:center"></span><button class="btn ghost small" id="next" type="button" aria-label="Следующее число">→</button></div>
+      </div>
+      <div class="chartbox"><svg id="map" viewBox="0 0 720 300" width="100%" role="img" aria-label="Преобразование равномерного числа U в значение X"></svg></div>
+      <div class="tbl"><table id="first"><thead><tr><th>i</th><th id="uhead">U = rng.random()</th><th>X</th></tr></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="panel">
+      <div class="headrow">
+        <div><h2>Сравнение характеристик</h2><p class="sub">Форма таблицы 1 лабораторной.</p></div>
+        <div class="copybox"><button class="btn ghost small" id="copytab">Копировать таблицу</button><span class="toast" id="toast1" aria-live="polite"></span></div>
+      </div>
+      <div class="tbl"><table id="cmp"><thead><tr><th>Характеристика</th><th>Теоретическое значение</th><th>Экспериментальное значение</th><th>Отклонение</th></tr></thead><tbody></tbody></table></div>
+      <p class="note" id="cmpnote"></p>
+    </section>
+    <section class="panel">
+      <h2>Критерий Колмогорова–Смирнова</h2>
+      <p class="sub" id="kssub"></p>
+      <div class="kstiles">
+        <div class="counter"><span>Статистика D</span><b id="ksD">—</b></div>
+        <div class="counter"><span>p-value</span><b id="ksP">—</b></div>
+        <div class="counter"><span>α</span><b id="ksA">—</b></div>
+      </div>
+      <p class="verdict" id="verdict"></p>
+      <div class="chartbox"><svg id="ecdf" viewBox="0 0 520 220" width="100%" role="img" aria-label="Эмпирическая и теоретическая функции распределения"></svg></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2 id="histTitle">Гистограмма и теоретическая плотность</h2>
+    <p class="sub">Как рисунок 1 лабораторной: plt.hist(x, bins, density=True) и теоретическая кривая f(x).</p>
+    <div class="chart-legend"><span><i class="sw bar" style="background:var(--accent-soft);outline:1px solid var(--accent)"></i>Смоделированные значения</span><span><i class="sw" style="border-color:var(--wait)"></i>Теоретическая плотность</span></div>
+    <div class="chartbox"><svg id="hist" viewBox="0 0 720 330" width="100%" role="img" aria-label="Гистограмма выборки и теоретическая плотность"></svg></div>
+  </section>
+
+  <section class="panel">
+    <div class="headrow">
+      <div><h2>Вывод программы</h2><p class="sub">То, что напечатает Python для этих параметров. D и p-value здесь округлены до 6 знаков, как в отчёте; Python печатает больше знаков, последние из них могут отличаться.</p></div>
+      <div class="copybox"><button class="btn ghost small" id="copyout">Копировать вывод</button><span class="toast" id="toast3" aria-live="polite"></span></div>
+    </div>
+    <pre id="console" tabindex="0"></pre>
+  </section>
+
+  <section class="panel">
+    <div class="headrow">
+      <div><h2>Программный код Python</h2><p class="sub">Полный текст программы из раздела 6 (для равномерного и нормального законов — по разделу 8). Параметры подставляются из пульта.</p></div>
+      <div class="copybox"><button class="btn ghost small" id="copycode">Копировать код</button><span class="toast" id="toast2" aria-live="polite"></span></div>
+    </div>
+    <pre id="code" tabindex="0"></pre>
+  </section>
+
+  <section class="panel">
+    <h2>Порядок работы с симулятором</h2>
+    <ol class="steps">
+      <li>Оставьте пример лабораторной (N = 10000, λ = 2, seed = 42) и убедитесь, что первые 10 чисел совпадают с шагом 6 методички.</li>
+      <li>Стрелками над графиком пройдите первые числа: видно, как значение U на оси ординат переходит в X через функцию распределения.</li>
+      <li>Перенесите таблицу характеристик в отчёт кнопкой «Копировать таблицу».</li>
+      <li>Уменьшите N до 100, затем увеличьте до 100 000: отклонения от теории и форма гистограммы меняются, а критерий по-прежнему принимает гипотезу.</li>
+      <li>Переключите закон на равномерный и нормальный (раздел 8) и сравните характеристики с теоретическими.</li>
+    </ol>
+  </section>
+  <footer>Филиал НИТУ «МИСИС» в г. Алмалык · Моделирование информационных процессов и систем</footer>
+</div>
+<script>
+// numpy.random.default_rng(seed): SeedSequence + PCG64 (XSL-RR), random() = (u64>>11)*2^-53
+function NpRng(seed){
+  const M32=0xffffffff>>>0;
+  const INIT_A=0x43b0d7e5,MULT_A=0x931e8875,INIT_B=0x8b51f9dd,MULT_B=0x58f38ded,MIX_L=0xca01f9dd,MIX_R=0x4973f715;
+  let ent=[]; let s=BigInt(Math.trunc(seed)); if(s===0n)ent=[0]; while(s>0n){ent.push(Number(s&0xffffffffn)); s>>=32n;}
+  let hc=INIT_A;
+  const hashmix=v=>{v=(v^hc)>>>0;hc=Math.imul(hc,MULT_A)>>>0;v=Math.imul(v,hc)>>>0;v=(v^(v>>>16))>>>0;return v;};
+  const mix=(x,y)=>{let r=(Math.imul(MIX_L,x)-Math.imul(MIX_R,y))>>>0;r=(r^(r>>>16))>>>0;return r;};
+  const pool=[0,0,0,0];
+  for(let i=0;i<4;i++)pool[i]=hashmix(i<ent.length?ent[i]:0);
+  for(let a=0;a<4;a++)for(let b=0;b<4;b++)if(a!==b)pool[b]=mix(pool[b],hashmix(pool[a]));
+  for(let a=4;a<ent.length;a++)for(let b=0;b<4;b++)pool[b]=mix(pool[b],hashmix(ent[a]));
+  let hb=INIT_B; const w=[];
+  for(let i=0;i<8;i++){let v=pool[i%4];v=(v^hb)>>>0;hb=Math.imul(hb,MULT_B)>>>0;v=Math.imul(v,hb)>>>0;v=(v^(v>>>16))>>>0;w.push(BigInt(v));}
+  const u64=k=>w[2*k]|(w[2*k+1]<<32n);
+  const MASK=(1n<<128n)-1n, M64=(1n<<64n)-1n;
+  const MULT=(2549297995355413924n<<64n)+4865540595714422341n;
+  const initstate=(u64(0)<<64n)|u64(1), initseq=(u64(2)<<64n)|u64(3);
+  let state=0n; const inc=((initseq<<1n)|1n)&MASK;
+  const step=()=>{state=(state*MULT+inc)&MASK;};
+  step(); state=(state+initstate)&MASK; step();
+  function next64(){step();const rot=Number(state>>122n);const x=((state>>64n)^state)&M64;return ((x>>BigInt(rot))|(x<<BigInt((64-rot)&63)))&M64;}
+  return {random(){return Number(next64()>>11n)/9007199254740992;}};
+}
+
+/* Суммирование как в NumPy (попарное, блоки по 128, 8 аккумуляторов) */
+function npSum(a,lo=0,n=a.length){
+  if(n<8){let r=0;for(let i=0;i<n;i++)r+=a[lo+i];return r;}
+  if(n<=128){const r=[a[lo],a[lo+1],a[lo+2],a[lo+3],a[lo+4],a[lo+5],a[lo+6],a[lo+7]];let i;
+    for(i=8;i<n-(n%8);i+=8){for(let k=0;k<8;k++)r[k]+=a[lo+i+k];}
+    let res=((r[0]+r[1])+(r[2]+r[3]))+((r[4]+r[5])+(r[6]+r[7]));for(;i<n;i++)res+=a[lo+i];return res;}
+  let n2=Math.floor(n/2);n2-=n2%8;return npSum(a,lo,n2)+npSum(a,lo+n2,n-n2);
+}
+function npMean(a){return npSum(a)/a.length;}
+function npVar(a){const m=npSum(a)/a.length;const d=new Float64Array(a.length);for(let i=0;i<a.length;i++){const t=a[i]-m;d[i]=t*t;}return npSum(d)/a.length;}
+/* Φ(x) с точностью ~1e-15: ряд без вычитаний и цепная дробь для хвостов */
+function erfcPos(z){ /* z>=0 */
+  if(z<3){let term=z,sum=z,n=0;while(Math.abs(term)>1e-17*Math.abs(sum)){n++;term*=2*z*z/(2*n+1);sum+=term;if(n>500)break;}
+    return 1-2/Math.sqrt(Math.PI)*Math.exp(-z*z)*sum;}
+  let f=z,C=z,D=0;const tiny=1e-300;
+  for(let k=1;k<300;k++){const ak=k/2;D=z+ak*D;D=D===0?tiny:D;C=z+ak/C;C=C===0?tiny:C;D=1/D;const dl=C*D;f*=dl;if(Math.abs(dl-1)<1e-16)break;}
+  return Math.exp(-z*z)/Math.sqrt(Math.PI)/f;
+}
+function normCdf(x){const z=x/Math.SQRT2;return z>=0?1-0.5*erfcPos(z):0.5*erfcPos(-z);}
+function ksStat(x,cdf){const s=Float64Array.from(x).sort();const n=s.length;let dp=-Infinity,dm=-Infinity;
+  for(let i=0;i<n;i++){const c=cdf(s[i]);const a=(i+1)/n-c,b=c-i/n;if(a>dp)dp=a;if(b>dm)dm=b;}return Math.max(dp,dm);}
+
+function mtwCdf(n,d){
+  const k=Math.floor(n*d)+1, m=2*k-1, h=k-n*d;
+  const H=new Float64Array(m*m);
+  for(let i=0;i<m;i++)for(let j=0;j<m;j++)H[i*m+j]=(i-j+1<0)?0:1;
+  for(let i=0;i<m;i++){H[i*m]-=Math.pow(h,i+1);H[(m-1)*m+i]-=Math.pow(h,m-i);}
+  H[(m-1)*m]+=(2*h-1>0?Math.pow(2*h-1,m):0);
+  for(let i=0;i<m;i++)for(let j=0;j<m;j++)if(i-j+1>0)for(let g=1;g<=i-j+1;g++)H[i*m+j]/=g;
+  const mul=(A,B)=>{const C=new Float64Array(m*m);for(let i=0;i<m;i++)for(let l=0;l<m;l++){const a=A[i*m+l];if(a===0)continue;for(let j=0;j<m;j++)C[i*m+j]+=a*B[l*m+j];}return C;};
+  let eA=0; let R=null, Re=0, P=H, Pe=0, e=n;
+  while(e>0){ if(e&1){ if(R===null){R=P.slice();Re=Pe;} else {R=mul(R,P);Re+=Pe; const v=R[(k-1)*m+k-1]; if(v>1e140){for(let i=0;i<m*m;i++)R[i]*=1e-140;Re+=140;}} }
+    e>>=1; if(e>0){P=mul(P,P);Pe*=2; const v=P[(k-1)*m+k-1]; if(v>1e140){for(let i=0;i<m*m;i++)P[i]*=1e-140;Pe+=140;}} }
+  let s=R[(k-1)*m+k-1], eQ=Re;
+  for(let i=1;i<=n;i++){ s=s*i/n; if(s<1e-140){s*=1e140;eQ-=140;} }
+  return s*Math.pow(10,eQ);
+}
+function pelzGoodSf(n,x){
+  if(x<=0)return 1; if(x>=1)return 0;
+  const PI=Math.PI,P2=PI*PI,P4=P2*P2,P6=P4*P2,S2P=Math.sqrt(2*PI),S3=Math.sqrt(3);
+  const z=Math.sqrt(n)*x,z2=z*z,z3=z2*z,z4=z2*z2,z6=z4*z2;
+  const qlog=-P2/8/z2; if(qlog<-708)return 1;
+  let q=Math.exp(qlog);
+  const k1a=-z2,k1b=P2/4,k2a=6*z6+2*z4,k2b=(2*z4-5*z2)*P2/4,k2c=P4*(1-2*z2)/16,
+        k3d=P6*(5-30*z2)/64,k3c=P4*(-60*z2+212*z4)/16,k3b=P2*(135*z4-96*z6)/4,k3a=-30*z6-90*Math.pow(z,8);
+  const K=[0,0,0,0]; const maxk=Math.ceil(16*z/PI);
+  for(let k=maxk;k>0;k--){const m=2*k-1,m2=m*m,m4=m2*m2,m6=m4*m2,qp=Math.pow(q,8*k);
+    const c=[1,k1a+k1b*m2,k2a+k2b*m2+k2c*m4,k3a+k3b*m2+k3c*m4+k3d*m6];
+    for(let i=0;i<4;i++)K[i]=K[i]*qp+c[i];}
+  const den=[z,6*z4,72*Math.pow(z,7),6480*Math.pow(z,10)];
+  for(let i=0;i<4;i++)K[i]=K[i]*q*S2P/den[i];
+  q=Math.exp(-P2/2/z2); let e2=0,e3=0;
+  for(let k=maxk;k>0;k--){const k2=k*k,qp=Math.pow(q,k2),kp=PI*k; e2+=k2*qp; e3+=(S3*z+kp)*(S3*z-kp)*k2*qp;}
+  K[2]+=e2*P2*S2P/(-36*z3); K[3]+=e3*P2*S2P/(216*z6);
+  let cdf=0; for(let i=0;i<4;i++)cdf+=K[i]/Math.pow(n,i/2);
+  return Math.min(1,Math.max(0,1-cdf));
+}
+/* p-value как в scipy.stats.kstest: точное распределение при N ≤ 140, иначе приближение Пельца–Гуда */
+function ksPvalue(n,d){ if(d<=0)return 1; if(d>=1)return 0; if(n<=140){return Math.min(1,Math.max(0,1-mtwCdf(n,d)));} return pelzGoodSf(n,d); }
+
+const $=id=>document.getElementById(id);
+const BASE={dist:'exp',N:10000,lam:2,a:2,b:10,mu:5,sigma:2,seed:42,bins:40,alpha:0.05};
+let S={...BASE}, R=null, cur=0;
+const DIST={
+  exp:{name:'Экспоненциальное распределение',tag:s=>`Exp(λ = ${s.lam})`,ks:s=>`"expon", args=(0, 1 / lam)`,
+       mean:s=>1/s.lam,var:s=>1/(s.lam*s.lam),pdf:(s,x)=>x<0?0:s.lam*Math.exp(-s.lam*x),cdf:(s,v)=>-Math.expm1(-(v/(1/s.lam))),inv:(s,u)=>-Math.log(1-u)/s.lam,
+       formula:s=>`F(x) = 1 − e<sup>−λx</sup> &nbsp;⇒&nbsp; X = −ln(1 − U) / λ<br>M(X) = 1/λ = <b>${fx(1/s.lam,4)}</b>, D(X) = 1/λ² = <b>${fx(1/(s.lam*s.lam),4)}</b>`},
+  uni:{name:'Равномерное распределение U(a, b)',tag:s=>`U(${s.a}, ${s.b})`,ks:s=>`"uniform", args=(a, b - a)`,
+       mean:s=>(s.a+s.b)/2,var:s=>(s.b-s.a)**2/12,pdf:(s,x)=>(x>=s.a&&x<=s.b)?1/(s.b-s.a):0,cdf:(s,v)=>Math.min(1,Math.max(0,(v-s.a)/(s.b-s.a))),inv:(s,u)=>s.a+(s.b-s.a)*u,
+       formula:s=>`F(x) = (x − a)/(b − a) &nbsp;⇒&nbsp; X = a + (b − a)·U<br>M(X) = (a+b)/2 = <b>${fx((s.a+s.b)/2,4)}</b>, D(X) = (b−a)²/12 = <b>${fx((s.b-s.a)**2/12,4)}</b>`},
+  norm:{name:'Нормальное распределение, преобразование Бокса–Мюллера',tag:s=>`N(${s.mu}, ${s.sigma}²)`,ks:s=>`"norm", args=(mu, sigma)`,
+       mean:s=>s.mu,var:s=>s.sigma*s.sigma,pdf:(s,x)=>Math.exp(-0.5*((x-s.mu)/s.sigma)**2)/(s.sigma*Math.sqrt(2*Math.PI)),cdf:(s,v)=>normCdf((v-s.mu)/s.sigma),inv:null,
+       formula:s=>`Z = √(−2 ln U₁) · cos(2π U₂), &nbsp;X = μ + σZ<br>M(X) = μ = <b>${fx(s.mu,4)}</b>, D(X) = σ² = <b>${fx(s.sigma*s.sigma,4)}</b>`}
+};
+const fx=(x,d)=>Number(x).toFixed(d);
+const pyRepr=x=>{if(Number.isInteger(x))return x.toFixed(1);let s=String(x);if(/e-/.test(s)){const [m,e]=s.split('e-');s=m+'e-'+e.padStart(2,'0');}return s;};
+
+function compute(){
+  const d=DIST[S.dist], r=NpRng(S.seed), n=S.N; let x=new Float64Array(n), u=null, u2=null;
+  if(S.dist==='norm'){u=new Float64Array(n);u2=new Float64Array(n);for(let i=0;i<n;i++)u[i]=r.random();for(let i=0;i<n;i++)u2[i]=r.random();
+    for(let i=0;i<n;i++)x[i]=S.mu+S.sigma*(Math.sqrt(-2*Math.log(u[i]))*Math.cos(2*Math.PI*u2[i]));}
+  else{u=new Float64Array(n);for(let i=0;i<n;i++)u[i]=r.random();for(let i=0;i<n;i++)x[i]=d.inv(S,u[i]);}
+  const mean=npMean(x), vr=npVar(x), D=ksStat(x,v=>d.cdf(S,v)), p=ksPvalue(n,D);
+  let mn=Infinity,mx=-Infinity;for(let i=0;i<n;i++){if(x[i]<mn)mn=x[i];if(x[i]>mx)mx=x[i];}
+  R={x,u,u2,mean,vr,D,p,mn,mx};
+}
+function render(){
+  const d=DIST[S.dist];
+  $('vtag').textContent=d.tag(S); $('distname').textContent=d.name; $('formula').innerHTML=d.formula(S);
+  document.querySelectorAll('[data-for]').forEach(el=>{el.hidden=el.dataset.for!==S.dist;});
+  document.querySelectorAll('#dist button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.d===S.dist)));
+  /* таблица 1 */
+  const rows=[['Математическое ожидание',d.mean(S),R.mean],['Дисперсия',d.var(S),R.vr]];
+  $('cmp').querySelector('tbody').innerHTML=rows.map(([nm,t,e])=>`<tr><td style="font-family:var(--f-body)">${nm}</td><td>${fx(t,4)}</td><td>${fx(e,4)}</td><td>${fx(Math.abs(e-t),4)}</td></tr>`).join('');
+  $('cmpnote').textContent=`Относительное отклонение: среднее ${fx(Math.abs(R.mean-d.mean(S))/Math.abs(d.mean(S)||1)*100,2)} %, дисперсия ${fx(Math.abs(R.vr-d.var(S))/d.var(S)*100,2)} %. При N = ${S.N} расхождения объясняются конечным объёмом выборки.`;
+  /* К–С */
+  const ok=R.p>S.alpha;
+  $('ksD').textContent=fx(R.D,6); $('ksP').textContent=R.p<1e-6?'< 0.000001':fx(R.p,6); $('ksA').textContent=String(S.alpha);
+  $('kssub').textContent=`stats.kstest(x, ${d.ks(S)}), N = ${S.N}. Ниже — где эмпирическая функция распределения дальше всего от теоретической.`;
+  $('verdict').className='verdict '+(ok?'ok':'bad');
+  $('verdict').textContent=ok?`p-value ${R.p<1e-6?'< 0.000001':'= '+fx(R.p,6)} > α = ${S.alpha}: гипотеза о соответствии распределению не отвергается.`:`p-value ${R.p<1e-6?'< 0.000001':'= '+fx(R.p,6)} ≤ α = ${S.alpha}: гипотеза о соответствии распределению отвергается.`;
+  const st=$('status'); st.className='pill '+(ok?'ok':'bad'); st.textContent=ok?'Гипотеза не отвергается':'Гипотеза отвергается';
+  renderMap(); renderHist(); renderEcdf(); renderConsole(); renderCode();
+}
+function niceStep(max,t){const raw=max/t,p=Math.pow(10,Math.floor(Math.log10(raw)));const m=raw/p;return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;}
+function ticks(lo,hi,t){const st=niceStep(hi-lo||1,t);const a=Math.ceil(lo/st-1e-9)*st;const out=[];for(let v=a;v<=hi+1e-9;v+=st)out.push(+v.toFixed(10));return {out,st};}
+const tickLabel=(v,st)=>{const dd=st>=1?0:Math.min(4,Math.ceil(-Math.log10(st)+1e-9));return v.toFixed(dd);};
+/* ---------- преобразование U → X ---------- */
+function renderMap(){
+  const d=DIST[S.dist], K=Math.min(10,S.N); cur=Math.max(0,Math.min(cur,K-1));
+  $('idx').textContent=`${cur+1} из ${K}`;
+  const tb=$('first').querySelector('tbody');
+  if(S.dist==='norm'){
+    $('uhead').textContent='U₁, U₂';
+    tb.innerHTML=Array.from({length:K},(_,i)=>`<tr class="pick ${i===cur?'cur':''}" data-i="${i}" tabindex="0"><td>${i+1}</td><td>${fx(R.u[i],8)}, ${fx(R.u2[i],8)}</td><td>${fx(R.x[i],8)}</td></tr>`).join('');
+  } else {
+    $('uhead').textContent='U = rng.random()';
+    tb.innerHTML=Array.from({length:K},(_,i)=>`<tr class="pick ${i===cur?'cur':''}" data-i="${i}" tabindex="0"><td>${i+1}</td><td>${fx(R.u[i],8)}</td><td>${fx(R.x[i],8)}</td></tr>`).join('');
+  }
+  tb.querySelectorAll('tr').forEach(tr=>{const go=()=>{cur=+tr.dataset.i;renderMap();};tr.addEventListener('click',go);tr.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
+  const Wd=720,H=300,L=58,Rr=20,T=16,B=44,pw=Wd-L-Rr,ph=H-T-B;
+  let lo,hi;
+  if(S.dist==='exp'){lo=0;hi=Math.max(...Array.from(R.x.slice(0,K)),4/S.lam)*1.08;}
+  else if(S.dist==='uni'){const w=S.b-S.a;lo=S.a-0.08*w;hi=S.b+0.08*w;}
+  else{lo=S.mu-4*S.sigma;hi=S.mu+4*S.sigma;}
+  const X=v=>L+pw*(v-lo)/(hi-lo), Y=v=>T+ph*(1-v);
+  let s='';
+  for(const v of [0,0.25,0.5,0.75,1]){s+=`<line x1="${L}" x2="${Wd-Rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="12" fill="var(--muted)">${v}</text>`;}
+  const tk=ticks(lo,hi,7); tk.out.forEach(v=>{s+=`<text x="${X(v)}" y="${H-B+18}" text-anchor="middle" font-size="12" fill="var(--muted)">${tickLabel(v,tk.st)}</text>`;});
+  let path='';for(let i=0;i<=300;i++){const v=lo+(hi-lo)*i/300;path+=(i?'L':'M')+X(v).toFixed(1)+' '+Y(d.cdf(S,v)).toFixed(1);}
+  s+=`<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+  s+=`<line x1="${L}" x2="${Wd-Rr}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)"/><line x1="${L}" x2="${L}" y1="${T}" y2="${Y(0)}" stroke="var(--muted)"/>`;
+  s+=`<text x="${L+pw/2}" y="${H-6}" text-anchor="middle" font-size="12.5" fill="var(--muted)">x</text><text x="14" y="${T+ph/2}" transform="rotate(-90 14 ${T+ph/2})" text-anchor="middle" font-size="12.5" fill="var(--muted)">F(x)</text>`;
+  for(let i=0;i<K;i++){const xv=R.x[i];if(xv<lo||xv>hi)continue;const fy=d.cdf(S,xv);const on=i===cur;
+    if(on){s+=`<path d="M${L} ${Y(fy)}H${X(xv)}V${Y(0)}" fill="none" stroke="var(--wait)" stroke-width="1.75" stroke-dasharray="5 4"/>`;
+      s+=`<circle cx="${L}" cy="${Y(fy)}" r="5" fill="var(--wait)"/><circle cx="${X(xv)}" cy="${Y(0)}" r="5" fill="var(--wait)"/>`;
+      const lx=Math.min(X(xv)+8,Wd-Rr-150);
+      s+=`<text x="${L+8}" y="${Y(fy)-8}" font-size="12.5" font-weight="600" fill="var(--wait)">${S.dist==='norm'?'Φ(X)':'U'} = ${fx(fy,4)}</text>`;
+      s+=`<text x="${lx}" y="${Y(0)-10}" font-size="12.5" font-weight="600" fill="var(--wait)">X = ${fx(xv,4)}</text>`;}
+    s+=`<circle cx="${X(xv)}" cy="${Y(fy)}" r="${on?5:3.5}" fill="${on?'var(--wait)':'var(--accent)'}"><title>№${i+1}: X = ${fx(xv,6)}</title></circle>`;}
+  $('map').innerHTML=s;
+  if(S.dist==='norm'){$('mapTitle').textContent='Преобразование Бокса–Мюллера';
+    $('mapSub').textContent=`Число №${cur+1}: U₁ = ${fx(R.u[cur],4)}, U₂ = ${fx(R.u2[cur],4)} ⇒ Z = ${fx((R.x[cur]-S.mu)/S.sigma,4)}, X = μ + σZ = ${fx(R.x[cur],4)}. На графике значение X отмечено на функции распределения Φ.`;}
+  else{$('mapTitle').textContent='Метод обратной функции';
+    $('mapSub').textContent=`Число №${cur+1}: U = ${fx(R.u[cur],4)} откладывается на оси F(x), по кривой находим X = F⁻¹(U) = ${fx(R.x[cur],4)}.`;}
+}
+$('prev').addEventListener('click',()=>{const K=Math.min(10,S.N);cur=(cur-1+K)%K;renderMap();});
+$('next').addEventListener('click',()=>{const K=Math.min(10,S.N);cur=(cur+1)%K;renderMap();});
+/* ---------- гистограмма ---------- */
+function renderHist(){
+  const d=DIST[S.dist], nb=S.bins, lo=R.mn, hi=R.mx, w=(hi-lo)/nb, cnt=new Array(nb).fill(0);
+  for(let i=0;i<R.x.length;i++){let k=Math.floor((R.x[i]-lo)/w);if(k>=nb)k=nb-1;if(k<0)k=0;cnt[k]++;}
+  const dens=cnt.map(c=>c/(R.x.length*w));
+  const xl0=S.dist==='exp'?0:lo;
+  const curve=[];for(let i=0;i<=500;i++){const v=xl0+(hi-xl0)*i/500;curve.push([v,d.pdf(S,v)]);}
+  const ymax0=Math.max(...dens,...curve.map(c=>c[1]))*1.08;
+  const Wd=720,H=330,L=60,Rr=20,T=16,B=48,pw=Wd-L-Rr,ph=H-T-B;
+  const xlo=Math.min(lo,xl0), xhi=hi; const X=v=>L+pw*(v-xlo)/(xhi-xlo);
+  const yt=ticks(0,ymax0,5); const ymax=Math.max(ymax0,yt.out[yt.out.length-1]); const Y=v=>T+ph*(1-v/ymax);
+  let s='';
+  yt.out.forEach(v=>{s+=`<line x1="${L}" x2="${Wd-Rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="12" fill="var(--muted)">${tickLabel(v,yt.st)}</text>`;});
+  const xt=ticks(xlo,xhi,8); xt.out.forEach(v=>{s+=`<text x="${X(v)}" y="${H-B+18}" text-anchor="middle" font-size="12" fill="var(--muted)">${tickLabel(v,xt.st)}</text>`;});
+  dens.forEach((v,i)=>{const x0=X(lo+i*w),x1=X(lo+(i+1)*w);s+=`<rect x="${x0}" y="${Y(v)}" width="${Math.max(0.5,x1-x0)}" height="${Y(0)-Y(v)}" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="0.6"><title>[${fx(lo+i*w,3)}; ${fx(lo+(i+1)*w,3)}): ${cnt[i]} знач., плотность ${fx(v,4)}</title></rect>`;});
+  s+=`<path d="${curve.map((c,i)=>(i?'L':'M')+X(c[0]).toFixed(1)+' '+Y(c[1]).toFixed(1)).join('')}" fill="none" stroke="var(--wait)" stroke-width="2.25"/>`;
+  s+=`<line x1="${L}" x2="${Wd-Rr}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)"/>`;
+  s+=`<text x="${L+pw/2}" y="${H-8}" text-anchor="middle" font-size="12.5" fill="var(--muted)">x</text><text x="16" y="${T+ph/2}" transform="rotate(-90 16 ${T+ph/2})" text-anchor="middle" font-size="12.5" fill="var(--muted)">Плотность вероятности</text>`;
+  $('hist').innerHTML=s; $('histTitle').textContent=d.name+': гистограмма и плотность';
+}
+/* ---------- эмпирическая и теоретическая F ---------- */
+function renderEcdf(){
+  const d=DIST[S.dist], n=R.x.length, srt=Float64Array.from(R.x).sort();
+  const Wd=520,H=220,L=40,Rr=14,T=12,B=34,pw=Wd-L-Rr,ph=H-T-B;
+  const lo=srt[0],hi=srt[n-1]; const X=v=>L+pw*(v-lo)/(hi-lo), Y=v=>T+ph*(1-v);
+  let s='';[0,0.5,1].forEach(v=>{s+=`<line x1="${L}" x2="${Wd-Rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end" font-size="11.5" fill="var(--muted)">${v}</text>`;});
+  const step=Math.max(1,Math.floor(n/400)); let p=`M${X(lo)} ${Y(0)}`;
+  for(let i=0;i<n;i+=step){p+=`H${X(srt[i]).toFixed(1)}V${Y((i+1)/n).toFixed(1)}`;} p+=`H${X(hi)}V${Y(1)}`;
+  s+=`<path d="${p}" fill="none" stroke="var(--accent)" stroke-width="1.5"/>`;
+  let c='';for(let i=0;i<=200;i++){const v=lo+(hi-lo)*i/200;c+=(i?'L':'M')+X(v).toFixed(1)+' '+Y(d.cdf(S,v)).toFixed(1);}
+  s+=`<path d="${c}" fill="none" stroke="var(--wait)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+  let best=0,bi=0,bf=0,be=0;for(let i=0;i<n;i++){const f=d.cdf(S,srt[i]);const a=(i+1)/n-f,b=f-i/n;if(a>best){best=a;bi=i;bf=f;be=(i+1)/n;}if(b>best){best=b;bi=i;bf=f;be=i/n;}}
+  s+=`<line x1="${X(srt[bi])}" x2="${X(srt[bi])}" y1="${Y(bf)}" y2="${Y(be)}" stroke="var(--bad)" stroke-width="2.5"/>`;
+  const tx=Math.min(X(srt[bi])+8,Wd-Rr-80);
+  s+=`<text x="${tx}" y="${(Y(bf)+Y(be))/2+4}" font-size="12" font-weight="600" fill="var(--bad)">D = ${fx(R.D,4)}</text>`;
+  s+=`<line x1="${L}" x2="${Wd-Rr}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)"/>`;
+  s+=`<text x="${L}" y="${H-8}" font-size="11.5" fill="var(--accent)">— эмпирическая Fₙ(x)</text><text x="${L+170}" y="${H-8}" font-size="11.5" fill="var(--wait)">- - теоретическая F(x)</text>`;
+  $('ecdf').innerHTML=s;
+}
+/* ---------- вывод программы и код ---------- */
+function npArr(v){
+  const parts=Array.from(v).map(x=>{let s=x.toFixed(8).replace(/0+$/,'');if(s.endsWith('.'))s+='';return s;});
+  const ip=Math.max(...parts.map(p=>p.split('.')[0].length)), fp=Math.max(...parts.map(p=>(p.split('.')[1]||'').length));
+  const cells=parts.map(p=>{const [i,f='']=p.split('.');return i.padStart(ip)+'.'+f.padEnd(fp);});
+  const lines=[];let line='[';
+  cells.forEach((c,k)=>{const add=(k?' ':'')+c;if((line+add).length+1>75&&k){lines.push(line.replace(/\s+$/,''));line=' '+c;}else line+=add;});
+  lines.push(line+']');return lines.join('\n');
+}
+function outText(){
+  const d=DIST[S.dist], nm={exp:'экспоненциальному распределению',uni:'равномерному распределению',norm:'нормальному распределению'}[S.dist];
+  return `Первые 10 случайных чисел:\n${npArr(R.x.slice(0,Math.min(10,S.N)))}\n\nХарактеристики распределения\n`+
+    `Выборочное среднее: ${pyRepr(R.mean)}\nТеоретическое среднее: ${S.dist==='norm'&&Number.isInteger(S.mu)?String(S.mu):pyRepr(d.mean(S))}\nЭмпирическая дисперсия: ${pyRepr(R.vr)}\nТеоретическая дисперсия: ${S.dist==='norm'&&Number.isInteger(S.sigma)?String(S.sigma*S.sigma):pyRepr(d.var(S))}\n\n`+
+    `Критерий Колмогорова–Смирнова\nD = ${fx(R.D,6)}\np- value = ${R.p<1e-6?'< 0.000001':fx(R.p,6)}\n`+
+    (R.p>S.alpha?`Гипотеза о соответствии ${nm} не отвергается.`:`Гипотеза о соответствии ${nm} отвергается.`);
+}
+function renderConsole(){$('console').textContent=outText();}
+function pyCode(){
+  const head=`import numpy as np\nimport matplotlib.pyplot as plt\nfrom scipy import stats\n\n# 1. Параметры эксперимента\nN = ${S.N}\n`;
+  const gen=`\n# 2. Генератор псевдослучайных чисел\nrng = np.random.default_rng(seed)\n\n`;
+  let body, name, ks, theo, xl;
+  if(S.dist==='exp'){
+    body=head+`lam = ${S.lam}\nseed = ${S.seed}\n`+gen+`# 3. Равномерные случайные числа U ∈ [0, 1)\nu = rng.random(N)\n\n# 4. Экспоненциальное распределение методом обратной функции\nx = - np.log(1 - u) / lam\n`;
+    theo=`theoretical_mean = 1 / lam\ntheoretical_var = 1 / lam**2`; xl=`x_line = np.linspace(0, np.max(x), 500)\npdf = lam * np.exp(- lam * x_line)`;
+    name='экспоненциального'; ks=`D, p_value = stats.kstest(x, "expon", args=(0, 1 / lam))`;
+  } else if(S.dist==='uni'){
+    body=head+`a = ${S.a}\nb = ${S.b}\nseed = ${S.seed}\n`+gen+`# 3. Равномерные случайные числа U ∈ [0, 1)\nu = rng.random(N)\n\n# 4. Равномерное распределение на [a, b)\nx = a + (b - a) * u\n`;
+    theo=`theoretical_mean = (a + b) / 2\ntheoretical_var = (b - a)**2 / 12`; xl=`x_line = np.linspace(np.min(x), np.max(x), 500)\npdf = np.full_like(x_line, 1 / (b - a))`;
+    name='равномерного'; ks=`D, p_value = stats.kstest(x, "uniform", args=(a, b - a))`;
+  } else {
+    body=head+`mu = ${S.mu}\nsigma = ${S.sigma}\nseed = ${S.seed}\n`+gen+`# 3. Два набора равномерных чисел U1, U2 ∈ [0, 1)\nu1 = rng.random(N)\nu2 = rng.random(N)\n\n# 4. Нормальное распределение: преобразование Бокса–Мюллера\nz = np.sqrt(- 2 * np.log(u1)) * np.cos(2 * np.pi * u2)\nx = mu + sigma * z\n`;
+    theo=`theoretical_mean = mu\ntheoretical_var = sigma**2`; xl=`x_line = np.linspace(np.min(x), np.max(x), 500)\npdf = stats.norm.pdf(x_line, mu, sigma)`;
+    name='нормального'; ks=`D, p_value = stats.kstest(x, stats.norm(mu, sigma).cdf)`;
+  }
+  return body+`\n# 5. Первые элементы\nprint("Первые 10 случайных чисел:")\nprint(x[:10])\n\n# 6. Характеристики выборки\nsample_mean = np.mean(x)\nsample_var = np.var(x)\n${theo}\n`+
+    `print("\\nХарактеристики распределения")\nprint("Выборочное среднее:", sample_mean)\nprint("Теоретическое среднее:", theoretical_mean)\nprint("Эмпирическая дисперсия:", sample_var)\nprint("Теоретическая дисперсия:", theoretical_var)\n\n`+
+    `# 7. Теоретическая плотность\n${xl}\n\n# 8. Гистограмма\nplt.hist(x, bins=${S.bins}, density=True, alpha=0.6,\n         label="Смоделированные значения")\nplt.plot(x_line, pdf, linewidth=2,\n         label="Теоретическая плотность")\n`+
+    `plt.title("Моделирование ${name} распределения")\nplt.xlabel("x")\nplt.ylabel("Плотность вероятности")\nplt.grid()\nplt.legend()\nplt.show()\n\n`+
+    `# 9. Критерий Колмогорова–Смирнова\n${ks}\nprint("\\nКритерий Колмогорова–Смирнова")\nprint("D =", D)\nprint("p- value =", p_value)\nalpha = ${S.alpha}\nif p_value > alpha:\n    print("Гипотеза о соответствии ${name.replace('ого','ому')} распределению не отвергается.")\nelse:\n    print("Гипотеза о соответствии ${name.replace('ого','ому')} распределению отвергается.")\n`;
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function highlight(src){
+  return src.split('\n').map(line=>{
+    let code=line,com=''; const noStr=line.replace(/"[^"]*"/g,m=>' '.repeat(m.length)); const h=noStr.indexOf('#');
+    if(h>=0){code=line.slice(0,h);com=line.slice(h);}
+    let out=esc(code).replace(/("[^"]*")/g,'\u0001$1\u0002');
+    out=out.split(/(\u0001[^\u0002]*\u0002)/).map(part=>part.startsWith('\u0001')?`<span class="c-str">${part.slice(1,-1)}</span>`:
+      part.replace(/\b(import|from|as|if|else|for|in|True|False|None)\b/g,'<span class="c-kw">$1</span>').replace(/\b(\d+(\.\d+)?)\b/g,'<span class="c-num">$1</span>')).join('');
+    return out+(com?`<span class="c-com">${esc(com)}</span>`:'');
+  }).join('\n');
+}
+function renderCode(){$('code').innerHTML=highlight(pyCode());}
+async function copyText(text,toastId,el){const t=$(toastId);
+  try{await navigator.clipboard.writeText(text);t.textContent='Скопировано';}
+  catch(e){const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);t.textContent='Выделено, нажмите Ctrl+C';}
+  clearTimeout(t._h);t._h=setTimeout(()=>{t.textContent='';},2500);}
+$('copytab').addEventListener('click',()=>{const d=DIST[S.dist];const rows=[['Характеристика','Теоретическое значение','Экспериментальное значение','Отклонение'],
+  ['Математическое ожидание',fx(d.mean(S),4),fx(R.mean,4),fx(Math.abs(R.mean-d.mean(S)),4)],['Дисперсия',fx(d.var(S),4),fx(R.vr,4),fx(Math.abs(R.vr-d.var(S)),4)]];
+  copyText(rows.map(r=>r.join('\t')).join('\n').replace(/(\d)\.(\d)/g,'$1,$2'),'toast1',$('cmp'));});
+$('copycode').addEventListener('click',()=>copyText(pyCode(),'toast2',$('code')));
+$('copyout').addEventListener('click',()=>copyText(outText(),'toast3',$('console')));
+/* ---------- ввод ---------- */
+const FIELDS=[['N',v=>Number.isInteger(v)&&v>=10&&v<=200000,'N — целое число от 10 до 200 000'],['lam',v=>v>0,'λ больше 0','exp'],['a',v=>Number.isFinite(v),'a — число','uni'],['b',v=>v>S.a,'b больше a','uni'],
+  ['mu',v=>Number.isFinite(v),'μ — число','norm'],['sigma',v=>v>0,'σ больше 0','norm'],['seed',v=>Number.isInteger(v)&&v>=0,'seed — целое число не меньше 0'],['bins',v=>Number.isInteger(v)&&v>=5&&v<=200,'интервалов от 5 до 200'],['alpha',v=>v>0&&v<1,'α от 0 до 1']];
+function fill(){FIELDS.forEach(([k])=>{$(k).value=S[k];});}
+function readForm(){const bad=[];const v={...S};
+  FIELDS.forEach(([k,ok,msg,dist])=>{const raw=$(k).value,x=+raw;v[k]=x;if(dist&&dist!==S.dist){$(k).setAttribute('aria-invalid','false');return;}
+    const good=raw!==''&&Number.isFinite(x)&&(k==='b'?x>v.a:ok(x));$(k).setAttribute('aria-invalid',good?'false':'true');if(!good)bad.push(msg);});
+  if(bad.length){$('err').textContent='Проверьте: '+bad.join('; ')+'.';$('err').hidden=false;return null;}
+  $('err').hidden=true;return v;}
+let timer=null;
+FIELDS.forEach(([k])=>$(k).addEventListener('input',()=>{const v=readForm();if(!v)return;S=v;clearTimeout(timer);timer=setTimeout(()=>{compute();render();},S.N>50000?250:60);}));
+document.querySelectorAll('#dist button').forEach(b=>b.addEventListener('click',()=>{S.dist=b.dataset.d;cur=0;const v=readForm();if(v){S=v;S.dist=b.dataset.d;}compute();render();}));
+$('reset').addEventListener('click',()=>{S={...BASE};cur=0;fill();$('err').hidden=true;FIELDS.forEach(([k])=>$(k).setAttribute('aria-invalid','false'));compute();render();});
+fill(); compute(); render();
+</script>
+
+</body>
+</html>

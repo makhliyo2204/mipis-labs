@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Симуляторы МИПиС</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Симуляторы лабораторных работ 1–4 по дисциплине «Моделирование информационных процессов и систем»: выбор работы и варианта, результаты совпадают с Python.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: шапка с переключателем ЛР, пульт с вариантом слева, сцена справа, ниже таблица отчёта, диаграмма и код. Палитра общая с симулятором СМО */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --surface2:#f5f7f9; --ink:#17202b; --muted:#5b6876; --line:#d5dce3;
+  --accent:#1f5f8b; --accent-soft:#dbe8f2;
+  --wait:#c97f00; --ok:#2e7d4f; --bad:#c2412d; --ok-soft:#e1f1e7; --wait-soft:#fbefd5; --bad-soft:#f8e1dc;
+  --code-bg:#f5f7f9; --btn-ink:#ffffff;
+  --f-display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161c; --surface:#18202a; --surface2:#1e2833; --ink:#e6ecf2; --muted:#93a1b0; --line:#2c3845;
+  --accent:#6aa9d6; --accent-soft:#1d3346;
+  --wait:#e5a634; --ok:#5cbf85; --bad:#ef7a64; --ok-soft:#173025; --wait-soft:#3a2c12; --bad-soft:#3d1f1a;
+  --code-bg:#141b23; --btn-ink:#0d1620; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161c; --surface:#18202a; --surface2:#1e2833; --ink:#e6ecf2; --muted:#93a1b0; --line:#2c3845;
+  --accent:#6aa9d6; --accent-soft:#1d3346;
+  --wait:#e5a634; --ok:#5cbf85; --bad:#ef7a64; --ok-soft:#173025; --wait-soft:#3a2c12; --bad-soft:#3d1f1a;
+  --code-bg:#141b23; --btn-ink:#0d1620; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+a{color:var(--accent)}
+.topnav{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:13.5px}
+.topnav .home{color:var(--ink);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.topnav .home:hover{color:var(--accent)}
+.labs{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.labs a{font-family:var(--f-mono);font-size:12.5px;font-weight:600;text-decoration:none;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--surface)}
+.labs a:hover{border-color:var(--accent);color:var(--ink)}
+.labs a[aria-current=page]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+header{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:flex-end;justify-content:space-between}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(22px,3.4vw,32px);line-height:1.15;margin:0;text-wrap:balance}
+.lead{margin:8px 0 0;color:var(--muted);max-width:66ch}
+.board{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tag{font-family:var(--f-mono);font-weight:600;font-size:20px;padding:6px 14px;border-radius:8px;background:var(--ink);color:var(--bg)}
+.pill{font-size:13px;font-weight:600;padding:5px 11px;border-radius:999px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--wait-soft);color:var(--wait)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.main{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;min-width:0}
+.controls{display:flex;flex-direction:column;gap:14px}
+.h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600}
+button{font:inherit;cursor:pointer}
+select,input[type=number]{font:inherit;font-family:var(--f-mono);padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--surface2);color:var(--ink)}
+select{width:100%;font-family:var(--f-body)}
+input[type=number]{width:96px;text-align:right}
+input[aria-invalid=true]{border-color:var(--bad)}
+.field{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.field label{font-size:14px;font-weight:500}
+.field small{display:block;color:var(--muted);font-size:12px;font-weight:400;font-family:var(--f-body)}
+.err{color:var(--bad);font-size:13px;margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.derived{font-size:13px;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px;display:flex;flex-direction:column;gap:3px}
+.derived b{color:var(--ink);font-family:var(--f-mono);font-weight:600}
+.stage{display:flex;flex-direction:column;gap:12px;padding:14px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;border-right:1px solid var(--line);color:var(--ink);padding:7px 12px;font-weight:600;font-family:var(--f-mono)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--btn-ink)}
+.btn{background:var(--accent);color:var(--btn-ink);border:0;border-radius:8px;padding:8px 14px;font-weight:600;text-decoration:none;display:inline-block}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:6px 11px;font-size:13px}
+.speed{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.speed select{width:auto;font-family:var(--f-mono);font-size:13px;padding:5px 6px}
+canvas{width:100%;display:block;border-radius:8px;background:var(--surface2)}
+.counters{display:grid;grid-template-columns:repeat(var(--cols,6),minmax(0,1fr));gap:8px}
+@media (max-width:700px){.counters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.counter{background:var(--surface2);border-radius:8px;padding:8px 10px;min-width:0}
+.counter span{display:block;font-size:11.5px;color:var(--muted);line-height:1.3}
+.counter b{font-family:var(--f-mono);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.counter.w b{color:var(--wait)} .counter.g b{color:var(--ok)} .counter.r b{color:var(--bad)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+h2{font-family:var(--f-display);font-weight:500;font-size:17px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:72ch}
+.headrow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.copybox{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.02em;vertical-align:bottom}
+td{font-family:var(--f-mono)}
+tbody tr.pick{cursor:pointer}
+tbody tr.pick:hover{background:var(--surface2)}
+tbody tr.cur{background:var(--accent-soft)}
+td.over{color:var(--bad)}
+.chartbox{overflow-x:auto}
+@media (max-width:620px){.chartbox svg{min-width:600px}}
+svg text{font-family:var(--f-body)}
+.chart-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.chart-legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:18px;height:0;border-top:2px solid}
+.sw.dash{border-top-style:dashed}
+.sw.bar{height:10px;border:0;width:12px}
+pre{margin:0;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto;font-family:var(--f-mono);font-size:13px;line-height:1.6;color:var(--ink)}
+.c-com{color:var(--muted)} .c-kw{color:var(--accent);font-weight:600} .c-num{color:var(--wait)} .c-str{color:var(--ok)}
+.note{font-size:13.5px;color:var(--muted);margin:10px 0 0;max-width:76ch}
+.toast{font-size:13px;color:var(--ok);min-height:1.2em}
+ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;max-width:80ch}
+footer{color:var(--muted);font-size:12.5px;text-align:center}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+.hub header{padding-top:12px}
+.cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:760px){.cards{grid-template-columns:1fr}}
+.card{min-width:0}
+.cardlink{height:100%;display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;color:var(--ink);text-decoration:none;transition:border-color .15s,transform .15s}
+.cardlink:hover{border-color:var(--accent);transform:translateY(-2px)}
+.cardlink:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.cardtop{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.num{font-family:var(--f-mono);font-weight:600;font-size:18px;padding:4px 12px;border-radius:8px;background:var(--ink);color:var(--bg)}
+.glyph{width:120px;height:44px;flex:none}
+.cardlink h2{font-size:18px;line-height:1.3;margin:4px 0 0;text-wrap:balance}
+.cardlink p{margin:0;color:var(--muted);font-size:14px}
+.facts{margin:4px 0 0;display:flex;flex-direction:column;gap:6px;border-top:1px dashed var(--line);padding-top:10px;font-size:13px}
+.facts div{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px}
+.facts dt{color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:11.5px;padding-top:1px}
+.facts dd{margin:0;font-family:var(--f-mono);font-size:12.5px}
+.go{margin-top:auto;padding-top:6px;font-weight:600;color:var(--accent)}
+.extra{display:flex;flex-direction:column;gap:4px;border:1px dashed var(--line);border-radius:12px;padding:16px 20px;color:var(--ink);text-decoration:none}
+.extra:hover{border-color:var(--accent)}
+.extra-title{font-weight:600}
+.extra-sub{color:var(--muted);font-size:13.5px}
+@media (prefers-reduced-motion: reduce){.cardlink:hover{transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap hub">
+  <header>
+    <div>
+      <p class="eyebrow">МИПиС · Филиал НИТУ «МИСИС» в г. Алмалык</p>
+      <h1>Симуляторы лабораторных работ</h1>
+      <p class="lead">Выберите лабораторную работу и свой вариант. Симулятор считает те же числа, что программа на Python при том же seed, показывает модель в движении и готовит таблицу и код для отчёта.</p>
+    </div>
+  </header>
+
+  <ol class="cards" aria-label="Лабораторные работы">
+    <li class="card">
+      <a class="cardlink" href="lab1/index.html">
+        <div class="cardtop">
+          <span class="num">ЛР 1</span>
+          <svg class="glyph" viewBox="0 0 120 44" aria-hidden="true"><g fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="0.8"><rect x="4" y="6" width="12" height="34"/><rect x="18" y="16" width="12" height="24"/><rect x="32" y="23" width="12" height="17"/><rect x="46" y="28" width="12" height="12"/><rect x="60" y="32" width="12" height="8"/><rect x="74" y="35" width="12" height="5"/><rect x="88" y="37" width="12" height="3"/><rect x="102" y="38" width="12" height="2"/></g><path d="M4 4 C 22 16, 40 28, 60 33 S 100 39, 116 39.5" fill="none" stroke="var(--wait)" stroke-width="1.6"/></svg>
+        </div>
+        <h2>Псевдослучайные числа с заданным законом распределения</h2>
+        <p>Генератор NumPy, метод обратной функции, гистограмма с теоретической плотностью и проверка критерием Колмогорова–Смирнова. Экспоненциальный, равномерный и нормальный законы.</p>
+        <dl class="facts"><div><dt>Вход</dt><dd>N, λ (или a, b; μ, σ), seed</dd></div><div><dt>Сверка</dt><dd>среднее 0,4969, D = 0,007441, p = 0,634279</dd></div></dl>
+        <span class="go">Открыть симулятор <span aria-hidden="true">→</span></span>
+      </a>
+    </li>
+    <li class="card">
+      <a class="cardlink" href="lab2/index.html">
+        <div class="cardtop">
+          <span class="num">ЛР 2</span>
+          <svg class="glyph" viewBox="0 0 120 44" aria-hidden="true"><g fill="var(--wait)"><circle cx="8" cy="22" r="4"/><circle cx="20" cy="22" r="4"/><circle cx="32" cy="22" r="4"/><circle cx="44" cy="22" r="4"/></g><path d="M52 22 L70 9 M52 22 L70 35" stroke="var(--line)" stroke-width="1.2"/><rect x="70" y="2" width="30" height="14" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="70" y="28" width="30" height="14" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><circle cx="110" cy="22" r="4" fill="var(--ok)"/></svg>
+        </div>
+        <h2>Анализ вариантов обслуживания автобусов</h2>
+        <p>Автобусы прибывают случайно и ждут свободный пост. Один и тот же поток сравнивается при 1, 2, 3 и 4 постах: ожидание, очередь, загрузка.</p>
+        <dl class="facts"><div><dt>Вход</dt><dd>20 вариантов: N, интервал, обслуживание, seed</dd></div><div><dt>Сверка</dt><dd>таблица 2: 377,59 мин при одном посте</dd></div></dl>
+        <span class="go">Открыть симулятор <span aria-hidden="true">→</span></span>
+      </a>
+    </li>
+    <li class="card">
+      <a class="cardlink" href="lab3/index.html">
+        <div class="cardtop">
+          <span class="num">ЛР 3</span>
+          <svg class="glyph" viewBox="0 0 120 44" aria-hidden="true"><g fill="var(--wait)"><circle cx="8" cy="22" r="4"/><circle cx="20" cy="22" r="4"/><circle cx="32" cy="22" r="4"/></g><path d="M40 22 H58" stroke="var(--line)" stroke-width="1.2"/><rect x="58" y="12" width="30" height="20" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><path d="M88 22 L104 10 M88 22 L104 34" stroke="var(--line)" stroke-width="1.2"/><circle cx="110" cy="10" r="4" fill="var(--ok)"/><circle cx="110" cy="34" r="4" fill="var(--bad)"/></svg>
+        </div>
+        <h2>Моделирование системы контроля</h2>
+        <p>Объекты проходят проверку на постах контроля; часть из них получает несоответствие с вероятностью p_defect. Сравниваются 1–4 поста.</p>
+        <dl class="facts"><div><dt>Вход</dt><dd>20 вариантов: N, интервал, контроль, p_defect, seed</dd></div><div><dt>Сверка</dt><dd>таблица 2: 367,09 мин, 32 несоответствия</dd></div></dl>
+        <span class="go">Открыть симулятор <span aria-hidden="true">→</span></span>
+      </a>
+    </li>
+    <li class="card">
+      <a class="cardlink" href="lab4/index.html">
+        <div class="cardtop">
+          <span class="num">ЛР 4</span>
+          <svg class="glyph" viewBox="0 0 120 44" aria-hidden="true"><g fill="none" stroke="var(--line)" stroke-width="1.2"><circle cx="20" cy="22" r="4"/><circle cx="32" cy="22" r="4"/></g><g fill="var(--wait)"><circle cx="44" cy="22" r="4"/><circle cx="56" cy="22" r="4"/></g><path d="M64 22 L78 9 M64 22 L78 35" stroke="var(--line)" stroke-width="1.2"/><rect x="78" y="2" width="24" height="14" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="78" y="28" width="24" height="14" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><path d="M8 22 Q 30 0 112 6" fill="none" stroke="var(--bad)" stroke-width="1.2" stroke-dasharray="3 3"/><circle cx="112" cy="6" r="4" fill="var(--bad)"/></svg>
+        </div>
+        <h2>Вычислительный центр с ограниченным буфером</h2>
+        <p>Задания ждут свободную ЭВМ в буфере конечной ёмкости, а при заполненном буфере получают отказ. Сравниваются 1–4 ЭВМ по ожиданию, загрузке и доле отказов.</p>
+        <dl class="facts"><div><dt>Вход</dt><dd>20 вариантов: N, интервал, обработка, буфер, seed</dd></div><div><dt>Сверка</dt><dd>таблица 2: 32,22 % отказов при одной ЭВМ</dd></div></dl>
+        <span class="go">Открыть симулятор <span aria-hidden="true">→</span></span>
+      </a>
+    </li>
+  </ol>
+
+  <section class="panel how">
+    <h2>Как работать с симулятором</h2>
+    <ol class="steps">
+      <li>Откройте свою лабораторную и выберите номер варианта из таблицы 4: исходные данные заполнятся сами.</li>
+      <li>Сравните результаты с выводом своей программы на Python. При том же seed числа должны совпасть до сотых.</li>
+      <li>Скопируйте таблицу результатов и код в отчёт, постройте график, сделайте вывод о рациональном варианте.</li>
+    </ol>
+  </section>
+
+  <a class="extra" href="https://makhliyo2204.github.io/smo/">
+    <span class="h3">Курсовой проект</span>
+    <span class="extra-title">Симулятор системы массового обслуживания M/M/n/m</span>
+    <span class="extra-sub">Поток заявок, каналы и очередь со сверкой имитации с аналитической моделью, к разделу 4 методических указаний.</span>
+  </a>
+
+  <footer>Ассистент кафедры ИТ и АТПП Собирова М. Д. · Моделирование информационных процессов и систем · 2026</footer>
+</div>
+
+</body>
+</html>

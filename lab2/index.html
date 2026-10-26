@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ЛР 2. Обслуживание автобусов</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Имитационная модель обслуживания автобусов (ЛР 2, МИПиС): 20 вариантов, 1–4 поста, анимация, таблица и код Python с теми же числами.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: шапка с переключателем ЛР, пульт с вариантом слева, сцена справа, ниже таблица отчёта, диаграмма и код. Палитра общая с симулятором СМО */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --surface2:#f5f7f9; --ink:#17202b; --muted:#5b6876; --line:#d5dce3;
+  --accent:#1f5f8b; --accent-soft:#dbe8f2;
+  --wait:#c97f00; --ok:#2e7d4f; --bad:#c2412d; --ok-soft:#e1f1e7; --wait-soft:#fbefd5; --bad-soft:#f8e1dc;
+  --code-bg:#f5f7f9; --btn-ink:#ffffff;
+  --f-display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161c; --surface:#18202a; --surface2:#1e2833; --ink:#e6ecf2; --muted:#93a1b0; --line:#2c3845;
+  --accent:#6aa9d6; --accent-soft:#1d3346;
+  --wait:#e5a634; --ok:#5cbf85; --bad:#ef7a64; --ok-soft:#173025; --wait-soft:#3a2c12; --bad-soft:#3d1f1a;
+  --code-bg:#141b23; --btn-ink:#0d1620; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161c; --surface:#18202a; --surface2:#1e2833; --ink:#e6ecf2; --muted:#93a1b0; --line:#2c3845;
+  --accent:#6aa9d6; --accent-soft:#1d3346;
+  --wait:#e5a634; --ok:#5cbf85; --bad:#ef7a64; --ok-soft:#173025; --wait-soft:#3a2c12; --bad-soft:#3d1f1a;
+  --code-bg:#141b23; --btn-ink:#0d1620; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+a{color:var(--accent)}
+.topnav{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:13.5px}
+.topnav .home{color:var(--ink);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.topnav .home:hover{color:var(--accent)}
+.labs{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.labs a{font-family:var(--f-mono);font-size:12.5px;font-weight:600;text-decoration:none;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--surface)}
+.labs a:hover{border-color:var(--accent);color:var(--ink)}
+.labs a[aria-current=page]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+header{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:flex-end;justify-content:space-between}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(22px,3.4vw,32px);line-height:1.15;margin:0;text-wrap:balance}
+.lead{margin:8px 0 0;color:var(--muted);max-width:66ch}
+.board{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tag{font-family:var(--f-mono);font-weight:600;font-size:20px;padding:6px 14px;border-radius:8px;background:var(--ink);color:var(--bg)}
+.pill{font-size:13px;font-weight:600;padding:5px 11px;border-radius:999px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--wait-soft);color:var(--wait)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.main{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;min-width:0}
+.controls{display:flex;flex-direction:column;gap:14px}
+.h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600}
+button{font:inherit;cursor:pointer}
+select,input[type=number]{font:inherit;font-family:var(--f-mono);padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--surface2);color:var(--ink)}
+select{width:100%;font-family:var(--f-body)}
+input[type=number]{width:96px;text-align:right}
+input[aria-invalid=true]{border-color:var(--bad)}
+.field{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.field label{font-size:14px;font-weight:500}
+.field small{display:block;color:var(--muted);font-size:12px;font-weight:400;font-family:var(--f-body)}
+.err{color:var(--bad);font-size:13px;margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.derived{font-size:13px;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px;display:flex;flex-direction:column;gap:3px}
+.derived b{color:var(--ink);font-family:var(--f-mono);font-weight:600}
+.stage{display:flex;flex-direction:column;gap:12px;padding:14px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;border-right:1px solid var(--line);color:var(--ink);padding:7px 12px;font-weight:600;font-family:var(--f-mono)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--btn-ink)}
+.btn{background:var(--accent);color:var(--btn-ink);border:0;border-radius:8px;padding:8px 14px;font-weight:600;text-decoration:none;display:inline-block}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:6px 11px;font-size:13px}
+.speed{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.speed select{width:auto;font-family:var(--f-mono);font-size:13px;padding:5px 6px}
+canvas{width:100%;display:block;border-radius:8px;background:var(--surface2)}
+.counters{display:grid;grid-template-columns:repeat(var(--cols,6),minmax(0,1fr));gap:8px}
+@media (max-width:700px){.counters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.counter{background:var(--surface2);border-radius:8px;padding:8px 10px;min-width:0}
+.counter span{display:block;font-size:11.5px;color:var(--muted);line-height:1.3}
+.counter b{font-family:var(--f-mono);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.counter.w b{color:var(--wait)} .counter.g b{color:var(--ok)} .counter.r b{color:var(--bad)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+h2{font-family:var(--f-display);font-weight:500;font-size:17px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:72ch}
+.headrow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.copybox{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.02em;vertical-align:bottom}
+td{font-family:var(--f-mono)}
+tbody tr.pick{cursor:pointer}
+tbody tr.pick:hover{background:var(--surface2)}
+tbody tr.cur{background:var(--accent-soft)}
+td.over{color:var(--bad)}
+.chartbox{overflow-x:auto}
+@media (max-width:620px){.chartbox svg{min-width:600px}}
+svg text{font-family:var(--f-body)}
+.chart-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.chart-legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:18px;height:0;border-top:2px solid}
+.sw.dash{border-top-style:dashed}
+.sw.bar{height:10px;border:0;width:12px}
+pre{margin:0;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto;font-family:var(--f-mono);font-size:13px;line-height:1.6;color:var(--ink)}
+.c-com{color:var(--muted)} .c-kw{color:var(--accent);font-weight:600} .c-num{color:var(--wait)} .c-str{color:var(--ok)}
+.note{font-size:13.5px;color:var(--muted);margin:10px 0 0;max-width:76ch}
+.toast{font-size:13px;color:var(--ok);min-height:1.2em}
+ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;max-width:80ch}
+footer{color:var(--muted);font-size:12.5px;text-align:center}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="topnav" aria-label="Лабораторные работы"><a class="home" href="../index.html">← Все лабораторные</a><div class="labs"><a href="../lab1/index.html" title="Псевдослучайные числа">ЛР 1</a><a href="../lab2/index.html" title="Обслуживание автобусов" aria-current="page">ЛР 2</a><a href="../lab3/index.html" title="Система контроля">ЛР 3</a><a href="../lab4/index.html" title="Вычислительный центр">ЛР 4</a></div></nav>
+  <header>
+    <div>
+      <p class="eyebrow">МИПиС · лабораторная работа 2</p>
+      <h1>Анализ вариантов обслуживания автобусов</h1>
+      <p class="lead">Автобусы прибывают через случайные интервалы, ждут свободный пост и проходят обслуживание. Один и тот же поток прогоняется через 1, 2, 3 и 4 поста; при том же seed числа совпадают с программой на Python.</p>
+    </div>
+    <div class="board"><span class="tag" id="vtag">Базовый</span><span class="pill ok" id="status">—</span></div>
+  </header>
+  <div class="main">
+    <aside class="panel controls" aria-label="Исходные данные">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label class="h3" for="variant">Вариант (таблица 4)</label>
+        <select id="variant"></select>
+      </div>
+      <div class="field"><label for="N">Автобусов N<small>сколько поступает за прогон</small></label><input type="number" id="N" step="1"></div><div class="field"><label for="ma">Средний интервал<small>mean_arrival, мин</small></label><input type="number" id="ma" step="0.1"></div><div class="field"><label for="ms">Обслуживание<small>mean_service, мин</small></label><input type="number" id="ms" step="0.1"></div><div class="field"><label for="seed">seed<small>одинаковый seed — тот же поток</small></label><input type="number" id="seed" step="1"></div>
+      <p class="err" id="err" role="alert" hidden></p>
+      <div class="derived" id="derived"></div>
+    </aside>
+    <section class="panel stage" aria-label="Анимация модели">
+      <div class="toolbar">
+        <span class="h3">Постов</span>
+        <div class="seg" id="posts" role="group" aria-label="Количество: Постов"><button data-n="1" aria-pressed="false">1</button><button data-n="2" aria-pressed="true">2</button><button data-n="3" aria-pressed="false">3</button><button data-n="4" aria-pressed="false">4</button></div>
+        <button class="btn" id="play">Пауза</button>
+        <button class="btn ghost" id="restart">Сначала</button>
+        <button class="btn ghost" id="toend">В конец</button>
+        <label class="speed" for="speed">Скорость
+          <select id="speed"><option value="10">10 мин/с</option><option value="30">30 мин/с</option><option value="60" selected>60 мин/с</option><option value="120">2 ч/с</option><option value="300">5 ч/с</option></select>
+        </label>
+      </div>
+      <canvas id="cv" height="280" aria-label="Анимация: очередь, Посты обслуживания и результат"></canvas>
+      <div class="counters" style="--cols:4"><div class="counter "><span>Модельное время</span><b id="k_T">0</b></div><div class="counter "><span>Прибыло</span><b id="k_arrived">0</b></div><div class="counter w"><span>В очереди</span><b id="k_queue">0</b></div><div class="counter g"><span>Обслужено</span><b id="k_done">0</b></div></div>
+      <div class="legend"><span><i style="background:var(--wait)"></i>ожидает поста</span><span><i style="background:var(--accent)"></i>на обслуживании</span><span><i style="background:var(--ok)"></i>обслужен</span></div>
+    </section>
+  </div>
+  <section class="panel">
+    <div class="headrow">
+      <div><h2>Результаты моделирования</h2><p class="sub" id="restitle"></p></div>
+      <div class="copybox"><button class="btn ghost small" id="copytab">Копировать таблицу</button><span class="toast" id="toast1" aria-live="polite"></span></div>
+    </div>
+    <div class="tbl"><table id="res"><thead><tr><th>Постов</th><th>Среднее ожидание, мин</th><th>Максимальное ожидание, мин</th><th>Максимальная очередь</th><th>Загрузка, %</th></tr></thead><tbody></tbody></table></div>
+    <p class="note" id="tabnote"></p>
+  </section>
+  <section class="panel">
+    <h2>Комплексная диаграмма показателей</h2>
+    <p class="sub">Как рисунок 1 лабораторной: ожидание и очередь по левой оси, загрузка постов по правой.</p>
+    <div class="chart-legend"><span><i class="sw" style="border-color:var(--accent)"></i>Среднее ожидание, мин</span><span><i class="sw" style="border-color:var(--wait)"></i>Макс. ожидание, мин</span><span><i class="sw bar" style="background:var(--accent-soft);outline:1px solid var(--accent)"></i>Макс. очередь</span><span><i class="sw dash" style="border-color:var(--muted)"></i>Загрузка, %</span></div>
+    <div class="chartbox"><svg id="chart" viewBox="0 0 720 330" width="100%" role="img" aria-label="Комплексная диаграмма показателей в зависимости от количества: Постов"></svg></div>
+  </section>
+  <section class="panel">
+    <div class="headrow">
+      <div><h2>Программный код Python</h2><p class="sub">В методичке раздел с кодом пустой, поэтому программа восстановлена по таблице 2: при seed = 42 она выводит ровно 377.59 / 890.25 / 57 / 98.03 и остальные строки. Исходные данные подставляются из текущего варианта.</p></div>
+      <div class="copybox"><button class="btn ghost small" id="copycode">Копировать код</button><span class="toast" id="toast2" aria-live="polite"></span></div>
+    </div>
+    <pre id="code" tabindex="0"></pre>
+  </section>
+  <section class="panel">
+    <h2>Порядок работы с симулятором</h2>
+    <ol class="steps"><li>Выберите свой номер варианта: N, интервал, время обслуживания и seed заполнятся из таблицы 4.</li><li>Перенесите таблицу результатов в отчёт кнопкой «Копировать таблицу»: она вставляется в Word и Excel как таблица.</li><li>Запустите код Python у себя и сверьте вывод с таблицей.</li><li>Посмотрите анимацию для 1 и для 2 постов: при одном посте очередь растёт почти без остановки, загрузка близка к 100 %.</li><li>Выберите рациональное число постов: ожидание приемлемое, а посты не простаивают большую часть времени.</li></ol>
+  </section>
+  <footer>Филиал НИТУ «МИСИС» в г. Алмалык · Моделирование информационных процессов и систем</footer>
+</div>
+<script>
+/* Генератор как в Python: random.seed(int) + Mersenne Twister; expovariate = -log(1-random())/lambd */
+function PyRandom(seed){
+  const mt=new Uint32Array(624); let mti=625;
+  function initGenrand(s){mt[0]=s>>>0;for(mti=1;mti<624;mti++){const p=mt[mti-1]^(mt[mti-1]>>>30);mt[mti]=(Math.imul(1812433253,p)+mti)>>>0;}}
+  function initByArray(key){initGenrand(19650218);let i=1,j=0;const kl=key.length;let k=624>kl?624:kl;
+    for(;k;k--){const p=mt[i-1]^(mt[i-1]>>>30);mt[i]=((mt[i]^Math.imul(p,1664525))+key[j]+j)>>>0;i++;j++;if(i>=624){mt[0]=mt[623];i=1;}if(j>=kl)j=0;}
+    for(k=623;k;k--){const p=mt[i-1]^(mt[i-1]>>>30);mt[i]=((mt[i]^Math.imul(p,1566083941))-i)>>>0;i++;if(i>=624){mt[0]=mt[623];i=1;}}
+    mt[0]=0x80000000;}
+  function genrand(){let y;if(mti>=624){let kk=0;for(;kk<227;kk++){y=(mt[kk]&0x80000000)|(mt[kk+1]&0x7fffffff);mt[kk]=mt[kk+397]^(y>>>1)^((y&1)?0x9908b0df:0);}
+      for(;kk<623;kk++){y=(mt[kk]&0x80000000)|(mt[kk+1]&0x7fffffff);mt[kk]=mt[kk-227]^(y>>>1)^((y&1)?0x9908b0df:0);}
+      y=(mt[623]&0x80000000)|(mt[0]&0x7fffffff);mt[623]=mt[396]^(y>>>1)^((y&1)?0x9908b0df:0);mti=0;}
+    y=mt[mti++];y^=y>>>11;y^=(y<<7)&0x9d2c5680;y^=(y<<15)&0xefc60000;y^=y>>>18;return y>>>0;}
+  let s=Math.abs(Math.trunc(seed)); const key=[]; if(s===0)key.push(0); while(s>0){key.push(s%4294967296); s=Math.floor(s/4294967296);} initByArray(key);
+  return {random(){const a=genrand()>>>5,b=genrand()>>>6;return (a*67108864+b)/9007199254740992;},
+          expovariate(l){return -Math.log(1-this.random())/l;}};
+}
+/* Поток заявок: интервал, обслуживание, (для ЛР3) несоответствие — в том же порядке, что в Python */
+function generateFlow(P,withDefect){
+  const r=PyRandom(P.seed); let t=0; const o=[];
+  for(let i=0;i<P.N;i++){t+=r.expovariate(1/P.ma);const s=r.expovariate(1/P.ms);const d=withDefect?(r.random()<P.pd):false;o.push({arr:t,svc:s,def:d});}
+  return o;
+}
+/* ЛР2 и ЛР3: очередь без ограничения. queueRule: 'withNew' (ЛР2: в очередь входит прибывший) или 'before' (ЛР3) */
+function simUnbounded(o,n,queueRule){
+  const free=new Array(n).fill(0); const tr=[]; let busy=0,end=0,mq=0,sw=0,mw=0;
+  for(let i=0;i<o.length;i++){
+    const a=o[i].arr; let q=0; for(let j=0;j<i;j++) if(tr[j].start>a) q++;
+    let k=0; for(let j=1;j<n;j++) if(free[j]<free[k]) k=j;
+    const st=Math.max(a,free[k]); free[k]=st+o[i].svc;
+    if(queueRule==='withNew' && st>a) mq=Math.max(mq,q+1);
+    mq=Math.max(mq,q);
+    tr.push({id:i+1,arr:a,start:st,end:st+o[i].svc,post:k,res:o[i].def?'bad':'ok'});
+    const w=st-a; sw+=w; if(w>mw) mw=w; busy+=o[i].svc; if(st+o[i].svc>end) end=st+o[i].svc;
+  }
+  const def=o.filter(x=>x.def).length;
+  return {avg:sw/o.length,max:mw,mq,load:busy/(n*(end-o[0].arr))*100,def,rej:0,loss:0,served:o.length,end,trace:tr};
+}
+/* ЛР4: ограниченный буфер, логика листинга 1 */
+function simBuffer(o,n,limit){
+  const free=new Array(n).fill(0); const tr=[]; const waits=[]; let rej=0,mq=0;
+  for(let i=0;i<o.length;i++){
+    const a=o[i].arr; let q=0; for(let j=0;j<i;j++) if(tr[j].start!==null && tr[j].start>a) q++;
+    mq=Math.max(mq,q);
+    let k=0; for(let j=1;j<n;j++) if(free[j]<free[k]) k=j;
+    if(free[k]<=a){ tr.push({id:i+1,arr:a,start:a,end:a+o[i].svc,post:k,res:'ok'}); waits.push(0); free[k]=a+o[i].svc; }
+    else if(q>=limit){ rej++; tr.push({id:i+1,arr:a,start:null,end:null,post:-1,res:'rej'}); }
+    else { const st=free[k]; tr.push({id:i+1,arr:a,start:st,end:st+o[i].svc,post:k,res:'ok'}); waits.push(st-a); free[k]=st+o[i].svc; mq=Math.max(mq,q+1); }
+  }
+  let tot=0,last=-Infinity,sw=0,mw=-Infinity;
+  for(let i=0;i<o.length;i++) if(tr[i].start!==null){tot+=o[i].svc; if(tr[i].end>last) last=tr[i].end;}
+  for(const w of waits){sw+=w; if(w>mw) mw=w;}
+  return {avg:sw/waits.length,max:mw,mq,load:tot/(n*(last-o[0].arr))*100,def:0,rej,loss:rej/o.length*100,served:waits.length,end:Math.max(last,o[o.length-1].arr),trace:tr};
+}
+function runLab(lab,P){
+  const o=generateFlow(P,lab===3);
+  return [1,2,3,4].map(n=> lab===4 ? simBuffer(o,n,P.buf) : simUnbounded(o,n,lab===2?'withNew':'before'));
+}
+if(typeof module!=='undefined') module.exports={PyRandom,generateFlow,simUnbounded,simBuffer,runLab};
+/* Округление как в Python (format/round): точная половина округляется к чётной цифре */
+function pyFixed(x,d){
+  if(!Number.isFinite(x)) return String(x);
+  const neg=x<0, ax=Math.abs(x), long=ax.toFixed(Math.min(100,d+40));
+  const dot=long.indexOf('.'), tail=long.slice(dot+1+d);
+  if(/^50*$/.test(tail)){ /* ровно половина */
+    const head=long.slice(0,dot+1+d); const lastDigit=+(d>0?head[head.length-1]:head[dot-1]);
+    const down=head.replace(/\.$/,''); const res=(lastDigit%2===0)?down:(ax+Math.pow(10,-d)/2).toFixed(d);
+    return (neg&&+res!==0?'-':'')+res;
+  }
+  return (neg&&+ax.toFixed(d)!==0?'-':'')+ax.toFixed(d);
+}
+if(typeof module!=='undefined') module.exports.pyFixed=pyFixed;
+
+const CFG={"lab": 2, "baseRef": "таблицей 2", "words": {"nom": "автобус", "genpl": "автобусов", "serverOne": "пост", "serverMany": "постах", "zone": "Посты обслуживания", "zoneShort": "Посты"}, "serverTitle": "Постов", "fields": [{"key": "N", "label": "Автобусов N", "hint": "сколько поступает за прогон", "short": "N", "int": true, "min": 1, "max": 3000, "err": "N — целое число от 1 до 3000"}, {"key": "ma", "label": "Средний интервал", "hint": "mean_arrival, мин", "short": "интервал", "min": 0, "minExcl": true, "err": "интервал больше 0"}, {"key": "ms", "label": "Обслуживание", "hint": "mean_service, мин", "short": "обслуживание", "min": 0, "minExcl": true, "err": "время больше 0"}, {"key": "seed", "label": "seed", "hint": "одинаковый seed — тот же поток", "short": "seed", "int": true, "min": 0, "err": "seed — целое число не меньше 0"}], "base": {"N": 200, "ma": 10, "ms": 15, "seed": 42}, "variants": [[160, 8, 12, 101], [180, 9, 14, 102], [200, 10, 15, 103], [220, 11, 16, 104], [150, 7, 11, 105], [240, 12, 18, 106], [170, 10, 13, 107], [190, 8, 14, 108], [210, 9, 16, 109], [230, 11, 17, 110], [160, 12, 14, 111], [180, 7, 13, 112], [200, 9, 12, 113], [220, 10, 18, 114], [250, 13, 17, 115], [140, 8, 10, 116], [260, 12, 15, 117], [190, 10, 16, 118], [210, 11, 13, 119], [230, 9, 15, 120]], "columns": [{"h": "Среднее ожидание, мин", "key": "avg", "dec": 2}, {"h": "Максимальное ожидание, мин", "key": "max", "dec": 2}, {"h": "Максимальная очередь", "key": "mq"}, {"h": "Загрузка, %", "key": "load", "dec": 2}], "bins": [{"res": "ok", "label": "обслужено", "color": "ok"}], "chart": {"series": [{"key": "avg", "axis": "L", "kind": "line", "color": "var(--accent)", "label": "Среднее ожидание, мин", "labels": true}, {"key": "max", "axis": "L", "kind": "line", "color": "var(--wait)", "label": "Макс. ожидание, мин"}, {"key": "mq", "axis": "L", "kind": "bar", "label": "Макс. очередь"}, {"key": "load", "axis": "R", "kind": "dash", "color": "var(--muted)", "label": "Загрузка, %", "marker": "sq"}], "right": "load", "xTitle": "Количество постов обслуживания", "leftTitle": "Ожидание, мин / очередь", "rightTitle": "Загрузка, %"}, "python": "import random\nimport statistics\n\n# Исходные данные ({{label}})\nN = {{N}}             # количество автобусов\nmean_arrival = {{ma}}   # средний интервал прибытия, мин\nmean_service = {{ms}}   # среднее время обслуживания, мин\nseed = {{seed}}           # начальное значение генератора\n\n\ndef generate(N, mean_arrival, mean_service, seed):\n    \"\"\"Один и тот же поток автобусов для всех вариантов числа постов.\"\"\"\n    random.seed(seed)\n    t = 0.0\n    arrivals, services = [], []\n    for _ in range(N):\n        t += random.expovariate(1 / mean_arrival)        # момент прибытия\n        arrivals.append(t)\n        services.append(random.expovariate(1 / mean_service))\n    return arrivals, services\n\n\ndef simulate(arrivals, services, posts):\n    free_at = [0.0] * posts      # когда освободится каждый пост\n    starts, waits = [], []\n    max_queue = 0\n    busy_time = 0.0\n    end_time = 0.0\n    for i, arrival in enumerate(arrivals):\n        # сколько автобусов уже ждёт в очереди в момент прибытия\n        queue = sum(1 for j in range(i) if starts[j] > arrival)\n        k = min(range(posts), key=lambda j: free_at[j])  # пост, который освободится раньше\n        start = max(arrival, free_at[k])\n        free_at[k] = start + services[i]\n        # если автобус встал в очередь, он тоже входит в её длину\n        max_queue = max(max_queue, queue + 1 if start > arrival else queue)\n        starts.append(start)\n        waits.append(start - arrival)\n        busy_time += services[i]\n        end_time = max(end_time, start + services[i])\n    load = busy_time / (posts * (end_time - arrivals[0])) * 100\n    return {\n        \"avg_wait\": statistics.mean(waits),\n        \"max_wait\": max(waits),\n        \"max_queue\": max_queue,\n        \"load\": load,\n        \"served\": len(arrivals),\n    }\n\n\narrivals, services = generate(N, mean_arrival, mean_service, seed)\nprint(\"Постов | Ср. ожидание | Макс. ожидание | Макс. очередь | Загрузка, %\")\nfor posts in (1, 2, 3, 4):\n    r = simulate(arrivals, services, posts)\n    print(f\"{posts:6d} | {r['avg_wait']:12.2f} | {r['max_wait']:14.2f} | \"\n          f\"{r['max_queue']:13d} | {r['load']:11.2f}\")\n", "counters": [{"key": "T"}, {"key": "arrived"}, {"key": "queue"}, {"key": "done"}]};
+CFG.serverForm=n=>n===1?'пост':(n<5?'поста':'постов');
+CFG.tableNote=(R,P,a)=>'Максимальная очередь считается вместе с прибывшим автобусом, который встал в очередь, как в таблице 2 лабораторной. Красным отмечено среднее ожидание там, где ρ ≥ 1 и очередь растёт без предела.';
+
+/* Движок страницы ЛР2–ЛР4. Настройки лабораторной приходят в объекте CFG */
+const $=id=>document.getElementById(id);
+const F=CFG.fields.map(f=>f.key);
+const sel=$('variant');
+sel.innerHTML=`<option value="base">Базовый пример (${CFG.baseRef})</option>`+CFG.variants.map((v,i)=>`<option value="${i+1}">Вариант ${i+1}</option>`).join('')+'<option value="own">Свои данные</option>';
+const toP=arr=>Object.fromEntries(F.map((k,i)=>[k,arr[i]]));
+let P={...CFG.base}, RES=[], curN=2, label='Базовый';
+const fx=(x,d=2)=>pyFixed(x,d);
+const nf=x=>String(x);
+const W=CFG.words;
+const srv=n=>CFG.serverForm(n);
+
+function fill(v){F.forEach(k=>{const f=CFG.fields.find(q=>q.key===k);$(k).value=f.dec?fx(v[k],f.dec):v[k];});}
+function readForm(){
+  const v={}; const bad=[];
+  CFG.fields.forEach(f=>{const x=+$(f.key).value; v[f.key]=x;
+    let ok=Number.isFinite(x)&&$(f.key).value!=='';
+    if(ok&&f.int) ok=Number.isInteger(x);
+    if(ok&&f.min!==undefined) ok=f.minExcl? x>f.min : x>=f.min;
+    if(ok&&f.max!==undefined) ok=x<=f.max;
+    $(f.key).setAttribute('aria-invalid',ok?'false':'true'); if(!ok) bad.push(f.err);});
+  if(bad.length){$('err').textContent='Проверьте: '+bad.join('; ')+'.';$('err').hidden=false;return null;}
+  $('err').hidden=true; return v;
+}
+function sameAs(v,arr){return F.every((k,i)=>Math.abs(v[k]-arr[i])<1e-9);}
+
+function recompute(){ RES=runLab(CFG.lab,P); renderDerived(); renderTable(); renderChart(); renderCode(); restart(); }
+
+function renderDerived(){
+  const a=P.ms/P.ma, nmin=Math.floor(a)+1;
+  let h=`<span>λ = 60 / ${nf(P.ma)} = <b>${fx(60/P.ma)}</b> ${W.genpl} в час</span>`+
+    `<span>μ = 60 / ${nf(P.ms)} = <b>${fx(60/P.ms)}</b> в час на ${W.serverOne}</span>`+
+    `<span>Нагрузка a = ${nf(P.ms)} / ${nf(P.ma)} = <b>${fx(a)}</b></span>`+
+    `<span>ρ при 1–4 ${W.serverMany}: <b>${[1,2,3,4].map(n=>fx(a/n)).join(' · ')}</b></span>`;
+  if(CFG.lab===4) h+=`<span>При ρ ≥ 1 буфер постоянно заполнен и часть заданий теряется; без отказов обычно нужно <b>не меньше ${nmin}</b> ЭВМ</span>`;
+  else h+=`<span>Чтобы очередь не росла без предела, нужно <b>не меньше ${nmin}</b> ${srv(nmin)}</span>`;
+  if(CFG.lab===3) h+=`<span>Ожидаемое число несоответствий N·p = <b>${fx(P.N*P.pd,1)}</b></span>`;
+  $('derived').innerHTML=h; $('vtag').textContent=label;
+}
+function cellVal(r,c){const v=r[c.key];return c.dec===undefined?String(v):fx(v,c.dec);}
+function renderTable(){
+  const a=P.ms/P.ma;
+  $('res').querySelector('tbody').innerHTML=RES.map((r,i)=>{const n=i+1, over=CFG.lab!==4&&a/n>=1;
+    return `<tr data-n="${n}" class="pick ${n===curN?'cur':''}" tabindex="0"><td>${n}</td>`+CFG.columns.map(c=>`<td class="${over&&c.key==='avg'?'over':''}">${cellVal(r,c)}</td>`).join('')+`</tr>`;}).join('');
+  document.querySelectorAll('#res tbody tr').forEach(tr=>{const go=()=>setN(+tr.dataset.n);tr.addEventListener('click',go);tr.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
+  const head=label==='Свои'?'Свои данные':label==='Базовый'?`Базовый пример, сверка с ${CFG.baseRef}`:label;
+  $('restitle').textContent=`${head}: `+CFG.fields.map(f=>`${f.short} = ${f.dec?fx(P[f.key],f.dec):P[f.key]}`).join(', ')+`. Нажмите на строку, чтобы посмотреть её в анимации.`;
+  $('tabnote').textContent=CFG.tableNote(RES,P,a);
+}
+function niceStep(max,t){const raw=max/t,p=Math.pow(10,Math.floor(Math.log10(raw)));const m=raw/p;return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;}
+function renderChart(){
+  const Wd=720,H=330,L=64,R=62,T=20,B=48,pw=Wd-L-R,ph=H-T-B;
+  const left=CFG.chart.series.filter(s=>s.axis==='L'), right=CFG.chart.series.filter(s=>s.axis==='R');
+  const lmaxRaw=Math.max(...RES.flatMap(r=>left.map(s=>r[s.key])))*1.1||1;
+  const step=niceStep(lmaxRaw,5), ymax=Math.ceil(lmaxRaw/step)*step;
+  const X=n=>L+pw*(n-0.5)/4, Y=v=>T+ph*(1-v/ymax);
+  let rmin=0,rmax=100,rstep=10;
+  if(CFG.chart.right==='load'){rmin=Math.max(0,Math.floor(Math.min(...RES.map(r=>r.load))/10)*10-10);}
+  else{const m=Math.max(...RES.map(r=>r[right[0].key]),1)*1.15; rstep=niceStep(m,5); rmax=Math.ceil(m/rstep)*rstep;}
+  const Y2=v=>T+ph*(1-(v-rmin)/(rmax-rmin));
+  let s='';
+  for(let v=0;v<=ymax+1e-9;v+=step){s+=`<line x1="${L}" x2="${Wd-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="12" fill="var(--muted)">${Number(v.toFixed(2))}</text>`;}
+  for(let v=rmin;v<=rmax+1e-9;v+=rstep){s+=`<text x="${Wd-R+8}" y="${Y2(v)+4}" font-size="12" fill="var(--muted)">${Number(v.toFixed(2))}</text>`;}
+  CFG.chart.series.filter(q=>q.kind==='bar').forEach(q=>{RES.forEach((r,i)=>{const n=i+1,bw=pw/4*0.5;s+=`<rect x="${X(n)-bw/2}" y="${Y(r[q.key])}" width="${bw}" height="${Y(0)-Y(r[q.key])}" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="0.75"><title>${q.label}: ${r[q.key]}</title></rect>`;});});
+  RES.forEach((r,i)=>{s+=`<text x="${X(i+1)}" y="${H-B+20}" text-anchor="middle" font-size="13" fill="var(--ink)" font-weight="600">${i+1}</text>`;});
+  CFG.chart.series.filter(q=>q.kind!=='bar').forEach(q=>{const yf=q.axis==='L'?Y:Y2;const pts=RES.map((r,i)=>[X(i+1),yf(r[q.key])]);
+    s+=`<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${q.color}" stroke-width="2"${q.kind==='dash'?' stroke-dasharray="6 5"':''}/>`;
+    pts.forEach((p,i)=>{const v=RES[i][q.key];s+=q.marker==='sq'?`<rect x="${p[0]-5}" y="${p[1]-5}" width="10" height="10" fill="${q.color}"><title>${q.label}: ${fx(v)}</title></rect>`:`<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="${q.color}"><title>${q.label}: ${fx(v)}</title></circle>`;});
+    if(q.labels) RES.forEach((r,i)=>{s+=`<text x="${X(i+1)+8}" y="${yf(r[q.key])-8}" font-size="11.5" fill="${q.color}" font-weight="600">${fx(r[q.key])}</text>`;});});
+  s+=`<line x1="${L}" x2="${Wd-R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)"/>`;
+  s+=`<text x="${L+pw/2}" y="${H-8}" text-anchor="middle" font-size="12.5" fill="var(--muted)">${CFG.chart.xTitle}</text>`;
+  s+=`<text x="16" y="${T+ph/2}" transform="rotate(-90 16 ${T+ph/2})" text-anchor="middle" font-size="12.5" fill="var(--muted)">${CFG.chart.leftTitle}</text>`;
+  s+=`<text x="${Wd-14}" y="${T+ph/2}" transform="rotate(90 ${Wd-14} ${T+ph/2})" text-anchor="middle" font-size="12.5" fill="var(--muted)">${CFG.chart.rightTitle}</text>`;
+  $('chart').innerHTML=s;
+}
+/* ---------- код Python ---------- */
+function pyCode(){
+  let src=CFG.python;
+  CFG.fields.forEach(f=>{src=src.split('{{'+f.key+'}}').join(f.dec?fx(P[f.key],f.dec):String(P[f.key]));});
+  const what=label==='Базовый'?'базовый пример':label==='Свои'?'свои данные':label.toLowerCase();
+  return src.split('{{label}}').join(what);
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function highlight(src){
+  return src.split('\n').map(line=>{
+    let code=line,com=''; const noStr=line.replace(/f?"[^"]*"/g,m=>' '.repeat(m.length)); const h=noStr.indexOf('#');
+    if(h>=0){code=line.slice(0,h);com=line.slice(h);}
+    let out=esc(code).replace(/(f?"[^"]*")/g,'\u0001$1\u0002');
+    out=out.split(/(\u0001[^\u0002]*\u0002)/).map(part=>{
+      if(part.startsWith('\u0001'))return `<span class="c-str">${part.slice(1,-1)}</span>`;
+      return part.replace(/\b(import|def|for|in|return|if|elif|else|and|lambda|None|True|False)\b/g,'<span class="c-kw">$1</span>').replace(/\b(\d+(\.\d+)?)\b/g,'<span class="c-num">$1</span>');
+    }).join('');
+    return out+(com?`<span class="c-com">${esc(com)}</span>`:'');
+  }).join('\n');
+}
+function renderCode(){$('code').innerHTML=highlight(pyCode());}
+async function copyText(text,toastId,fallbackEl){
+  const t=$(toastId);
+  try{await navigator.clipboard.writeText(text);t.textContent='Скопировано';}
+  catch(e){ if(fallbackEl){const r=document.createRange();r.selectNodeContents(fallbackEl);const s=getSelection();s.removeAllRanges();s.addRange(r);} t.textContent='Выделено, нажмите Ctrl+C';}
+  clearTimeout(t._h); t._h=setTimeout(()=>{t.textContent='';},2500);
+}
+$('copytab').addEventListener('click',()=>{
+  const head=[CFG.serverTitle,...CFG.columns.map(c=>c.h)];
+  const rows=RES.map((r,i)=>[i+1,...CFG.columns.map(c=>cellVal(r,c))]);
+  copyText([head,...rows].map(r=>r.join('\t')).join('\n'),'toast1',$('res'));
+});
+$('copycode').addEventListener('click',()=>copyText(pyCode(),'toast2',$('code')));
+
+/* ---------- анимация ---------- */
+const cv=$('cv'), ctx=cv.getContext('2d'); const C={};
+function readColors(){const cs=getComputedStyle(document.documentElement);['ink','muted','line','surface','surface2','accent','accent-soft','wait','ok','bad','ok-soft','bad-soft','wait-soft'].forEach(k=>C[k]=cs.getPropertyValue('--'+k).trim());}
+let Wc=800,Hc=280;
+function fit(){const dpr=window.devicePixelRatio||1;Wc=cv.clientWidth||800;Hc=Wc<560?320:280;cv.style.height=Hc+'px';cv.width=Math.round(Wc*dpr);cv.height=Math.round(Hc*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);}
+let T=0,playing=true,last=null,speed=60;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function restart(){T=0;last=null;playing=!reduce;$('play').textContent=playing?'Пауза':'Пуск';draw();}
+function setN(n){curN=n;document.querySelectorAll('#posts button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.n===n)));
+  document.querySelectorAll('#res tbody tr').forEach(tr=>tr.classList.toggle('cur',+tr.dataset.n===n));restart();}
+document.querySelectorAll('#posts button').forEach(b=>b.addEventListener('click',()=>setN(+b.dataset.n)));
+$('play').addEventListener('click',()=>{const r=RES[curN-1];if(T>=r.end){T=0;}playing=!playing;last=null;$('play').textContent=playing?'Пауза':'Пуск';});
+$('restart').addEventListener('click',restart);
+$('toend').addEventListener('click',()=>{T=RES[curN-1].end;playing=false;$('play').textContent='Пуск';draw();});
+$('speed').addEventListener('change',e=>{speed=+e.target.value;});
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function hm(t){const h=Math.floor(t/60),m=Math.floor(t%60);return `${h} ч ${String(m).padStart(2,'0')} мин`;}
+function draw(){
+  const r=RES[curN-1]; if(!r)return; const tr=r.trace, n=curN;
+  ctx.clearRect(0,0,Wc,Hc);
+  const narrow=Wc<560;
+  const binW=narrow?78:112, postW=narrow?92:150, gap=narrow?12:24;
+  const binX=Wc-binW-12, postX=binX-gap-postW, qRight=postX-gap-6, qLeft=14;
+  const top=34, areaH=Hc-top-14, cy=top+areaH/2, rad=7, pitch=18;
+  const waiting=[],inSvc=new Array(n).fill(null); const cnt={arrived:0,done:0,ok:0,bad:0,rej:0};
+  for(const o of tr){ if(o.arr<=T)cnt.arrived++;
+    if(o.res==='rej'){ if(o.arr<=T)cnt.rej++; continue; }
+    if(o.arr<=T&&o.start>T)waiting.push(o); else if(o.start<=T&&o.end>T)inSvc[o.post]=o;
+    if(o.end<=T){cnt.done++; cnt[o.res]++;} }
+  ctx.font='600 11px "Golos Text",system-ui,sans-serif';ctx.fillStyle=C.muted;ctx.textBaseline='alphabetic';ctx.textAlign='left';
+  ctx.fillText((CFG.lab===4?`БУФЕР ${waiting.length}/${P.buf}`:(narrow?'ОЧЕРЕДЬ ':'ОЧЕРЕДЬ · ')+waiting.length),qLeft,20); ctx.fillText((narrow?W.zoneShort:W.zone).toUpperCase(),postX,20); ctx.fillText(narrow?'ИТОГ':'РЕЗУЛЬТАТ',binX,20);
+  const cap=Math.max(1,Math.floor((qRight-qLeft-30)/pitch));
+  if(CFG.lab===4){ for(let i=0;i<Math.min(P.buf,cap);i++){const x=qRight-10-i*pitch;ctx.beginPath();ctx.arc(x,cy,rad,0,Math.PI*2);ctx.strokeStyle=C.line;ctx.lineWidth=1.25;ctx.stroke();} }
+  else { ctx.strokeStyle=C.line;ctx.setLineDash([4,5]);ctx.beginPath();ctx.moveTo(qLeft,cy);ctx.lineTo(qRight,cy);ctx.stroke();ctx.setLineDash([]); }
+  waiting.slice(0,cap).forEach((o,i)=>{const x=qRight-10-i*pitch;ctx.beginPath();ctx.arc(x,cy,rad,0,Math.PI*2);ctx.fillStyle=C.wait;ctx.fill();});
+  if(waiting.length>cap){ctx.fillStyle=C.wait;ctx.font='600 12px "JetBrains Mono",monospace';ctx.fillText('+'+(waiting.length-cap),qLeft,cy-12);}
+  const boxH=Math.min(52,(areaH-(n-1)*10)/n), totalH=n*boxH+(n-1)*10, by0=top+(areaH-totalH)/2;
+  const bins=CFG.bins, bh=(areaH-12*(bins.length-1))/bins.length, binY=i=>top+i*(bh+12);
+  ctx.strokeStyle=C.line;ctx.lineWidth=1;
+  for(let k=0;k<n;k++){const y=by0+k*(boxH+10)+boxH/2;ctx.beginPath();ctx.moveTo(qRight,cy);ctx.lineTo(postX,y);ctx.stroke();ctx.beginPath();ctx.moveTo(postX+postW,y);ctx.lineTo(binX,binY(0)+bh/2);ctx.stroke();}
+  for(let k=0;k<n;k++){const y=by0+k*(boxH+10), o=inSvc[k];
+    rr(postX,y,postW,boxH,8);ctx.fillStyle=o?C['accent-soft']:C.surface;ctx.fill();ctx.strokeStyle=o?C.accent:C.line;ctx.lineWidth=1.25;ctx.stroke();
+    ctx.textBaseline='middle';ctx.textAlign='left';
+    if(o){const pr=(T-o.start)/(o.end-o.start);ctx.beginPath();ctx.arc(postX+18,y+boxH/2,rad,0,Math.PI*2);ctx.fillStyle=C.accent;ctx.fill();
+      ctx.fillStyle=C.ink;ctx.font='600 12px "JetBrains Mono",monospace';ctx.fillText('№'+o.id,postX+32,y+boxH/2-(narrow?0:6));
+      if(!narrow){ctx.fillStyle=C.line;ctx.fillRect(postX+32,y+boxH/2+6,postW-46,4);ctx.fillStyle=C.accent;ctx.fillRect(postX+32,y+boxH/2+6,(postW-46)*pr,4);}}
+    else{ctx.fillStyle=C.muted;ctx.font='12px "Golos Text",system-ui,sans-serif';ctx.fillText('свободен',postX+14,y+boxH/2);}
+    ctx.fillStyle=C.muted;ctx.font='11px "JetBrains Mono",monospace';ctx.textAlign='right';ctx.fillText(String(k+1),postX+postW-8,y+12);ctx.textAlign='left';ctx.textBaseline='alphabetic';}
+  bins.forEach((b,i)=>{const y=binY(i), col=C[b.color], soft=C[b.color+'-soft'];
+    rr(binX,y,binW,bh,8);ctx.fillStyle=soft;ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle=col;ctx.font='600 '+(narrow?18:22)+'px "JetBrains Mono",monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(String(cnt[b.res]),binX+binW/2,y+bh/2-(bh>60?8:6));
+    ctx.font=(narrow?'10.5px':'11.5px')+' "Golos Text",system-ui,sans-serif';ctx.fillText(narrow&&b.short?b.short:b.label,binX+binW/2,y+bh/2+(bh>60?14:11));ctx.textAlign='left';ctx.textBaseline='alphabetic';});
+  const fly=speed*0.5;
+  for(const o of tr){
+    if(o.res==='rej'){const age=T-o.arr; if(age>=0&&age<fly){const p=age/fly;const bi=bins.findIndex(b=>b.res==='rej');const ty=binY(bi)+bh/2;
+        const x=qRight+(binX+10-qRight)*p, y=cy+(ty-cy)*p-Math.sin(p*Math.PI)*40;
+        ctx.globalAlpha=1-p*0.5;ctx.beginPath();ctx.arc(x,y,rad-1,0,Math.PI*2);ctx.fillStyle=C.bad;ctx.fill();ctx.globalAlpha=1;} continue;}
+    const age=T-o.end; if(age>=0&&age<fly){const p=age/fly;const sy=by0+o.post*(boxH+10)+boxH/2;const bi=Math.max(0,bins.findIndex(b=>b.res===o.res));const ty=binY(bi)+bh/2;
+      const x=postX+postW+(binX-postX-postW+12)*p, y=sy+(ty-sy)*p;
+      ctx.globalAlpha=1-p*0.6;ctx.beginPath();ctx.arc(x,y,rad-1,0,Math.PI*2);ctx.fillStyle=o.res==='bad'?C.bad:C.ok;ctx.fill();ctx.globalAlpha=1;}}
+  const vals={T:hm(T),arrived:cnt.arrived,queue:waiting.length,done:cnt.done,ok:cnt.ok,bad:cnt.bad,rej:cnt.rej};
+  CFG.counters.forEach(c=>{$('k_'+c.key).textContent=vals[c.key];});
+  const st=$('status'); const a=P.ms/P.ma/n;
+  if(a>=1){st.className='pill bad';st.textContent=`${n} ${srv(n)}: перегрузка, ρ = ${fx(a)}`;}
+  else if(waiting.length>=5){st.className='pill warn';st.textContent=`${n} ${srv(n)}: очередь ${waiting.length}`;}
+  else{st.className='pill ok';st.textContent=`${n} ${srv(n)}: ρ = ${fx(a)}`;}
+}
+function loop(ts){
+  if(playing){ if(last!==null){T+=(ts-last)/1000*speed;} last=ts; const end=RES[curN-1]?.end??0;
+    if(T>=end){T=end;playing=false;$('play').textContent='Пуск';} draw(); } else last=null;
+  requestAnimationFrame(loop);
+}
+function applyVariant(){
+  const v=sel.value;
+  if(v==='base'){P={...CFG.base};label='Базовый';}
+  else if(v==='own'){label='Свои';renderDerived();renderTable();renderCode();return;}
+  else{P=toP(CFG.variants[+v-1]);label='Вариант '+v;}
+  fill(P); recompute();
+}
+sel.addEventListener('change',applyVariant);
+F.forEach(id=>$(id).addEventListener('input',()=>{
+  const v=readForm(); if(!v)return;
+  const isBase=sel.value==='base'&&F.every(k=>Math.abs(v[k]-CFG.base[k])<1e-9);
+  const isVar=sel.value!=='base'&&sel.value!=='own'&&sameAs(v,CFG.variants[+sel.value-1]);
+  if(!isBase&&!isVar){sel.value='own';label='Свои';}
+  P=v; recompute();
+}));
+new MutationObserver(()=>{readColors();renderChart();draw();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors();draw();});
+window.addEventListener('resize',()=>{fit();draw();});
+readColors(); fit(); fill(P); recompute(); requestAnimationFrame(loop);
+if(document.fonts)document.fonts.ready.then(()=>draw());
+
+</script>
+</body>
+</html>
